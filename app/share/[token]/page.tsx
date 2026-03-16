@@ -2,4 +2,6 @@ import { createClient } from '@/lib/supabase/server'
 import { notFound } from 'next/navigation'
 
 interface Props {
-  params: Promise<{ token
+  params: Promise<{ token: string }>;
+}
+
