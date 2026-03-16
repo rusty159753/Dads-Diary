@@ -1,1 +1,4 @@
-Create new file → Name: lib/utils.ts → Paste utils code → Commit
+import { type ClassValue, clsx } from "clsx"
+import { twMerge } from "tailwind-merge"
+
+export function cn(...inputs
