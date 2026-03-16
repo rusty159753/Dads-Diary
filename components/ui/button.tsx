@@ -1,1 +1,3 @@
-Create new file → Name: components/ui/button.tsx → Paste button code → Commit "Add Button component"
+import { cva, type VariantProps } from "class-variance-authority";
+
+const buttonVariants
