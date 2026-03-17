@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import "../../globals.css";  // Up 2 dirs: app/(dashboard) -> app -> root
+import "../globals.css"; (one ../ up from (dashboard) to app)
 
 
 const inter = Inter({ subsets: ["latin"] });
