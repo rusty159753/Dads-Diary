@@ -1,5 +1,6 @@
 'use client'
 
+import { Suspense } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -8,6 +9,8 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { createDiaryEntry } from './actions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
+import { Skeleton } from '@/components/ui/skeleton'
+import DiaryList from './DiaryList'
 
 const schema = z.object({
   title: z.string().min(1, 'Title required').max(100),
@@ -41,8 +44,9 @@ export default function DiaryPage() {
         </CardContent>
       </Card>
 
-      {/* Entries list - server fetch in separate component or suspense */}
-      <div>Entries will show here after server component integration</div>
+      <Suspense fallback={<Skeleton className="h-64 w-full" />}>
+        <DiaryList />
+      </Suspense>
     </main>
   )
 }
