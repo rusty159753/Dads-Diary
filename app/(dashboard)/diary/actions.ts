@@ -35,3 +35,22 @@ export async function createDiaryEntry(formData: FormData) {
   
   revalidatePath('/dashboard/diary')
 }
+
+export async function deleteDiaryEntry(formData: FormData) {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) throw new Error('Unauthorized')
+
+  const id = formData.get('id') as string
+  if (!id) throw new Error('Entry ID is required')
+
+  const { error } = await supabase
+    .from('diary_entries')
+    .delete()
+    .eq('id', id)
+    .eq('user_id', user.id)
+  if (error) throw error
+
+  revalidatePath('/dashboard/diary')
+  return { success: true }
+}
