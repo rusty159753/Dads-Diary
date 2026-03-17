@@ -1,7 +1,11 @@
 'use client'
 
 import { useState } from 'react'
-import { createShareToken } from '@/lib/actions/share'
+import { createShareToken } from '../lib/supabase/actions/share'
+
+
+
+
 
 interface ShareButtonProps {
   entryId: string
@@ -30,4 +34,10 @@ export default function ShareButton({ entryId }: ShareButtonProps) {
   return (
     <button
       onClick={handleShare}
-      disabled={loading
+      disabled={loading}
+      className="px-4 py-2 bg-blue-500 text-white rounded disabled:opacity-50"
+    >
+      {loading ? 'Copying...' : 'Copy Share Link'}
+    </button>
+  );
+}
