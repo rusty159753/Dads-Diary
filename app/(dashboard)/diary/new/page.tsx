@@ -80,7 +80,7 @@ export default function NewEntry() {
 
         <div>
   <label className="block text-sm font-medium text-gray-700 mb-4">Photos & Memories</label>
-  <MediaUpload entryId="temp" />
+{/* <MediaUpload entryId="temp" /> */}
 </div>
 
         <Button type="submit" disabled={saving} className="w-full">

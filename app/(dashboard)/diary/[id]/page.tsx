@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { format } from 'date-fns'
-import MediaUpload from '@/components/MediaUpload'
+// import MediaUpload from '@/components/MediaUpload'
 
 interface Entry {
   id: string
@@ -60,20 +60,9 @@ export default function EntryPage() {
         </div>
       </article>
 
-      {/* Add More Media */}
-      <div className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-2xl p-12 border border-blue-100">
-        <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center">
-          📸 Photos & Memories
-        </h2>
-        <MediaUpload 
-          entryId={entry.id} 
-          onUpload={(url) => {
-            console.log('New media:', url)
-            // Refresh page to show new media
-            window.location.reload()
-          }}
-        />
-      </div>
+      {/* Photos & Memories (MediaUpload removed temporarily) */}
     </div>
   )
 }
+
+{/* <MediaUpload entryId={entry.id} onUpload={...} /> */}
