@@ -1,9 +1,3 @@
 {
-  "/_not-found/page": "app/_not-found/page.js",
-  "/login/page": "app/login/page.js",
-  "/signup/page": "app/signup/page.js",
-  "/share/[token]/page": "app/share/[token]/page.js",
-  "/(dashboard)/diary/new/page": "app/(dashboard)/diary/new/page.js",
-  "/(dashboard)/diary/page": "app/(dashboard)/diary/page.js",
-  "/(dashboard)/diary/[id]/page": "app/(dashboard)/diary/[id]/page.js"
+  "/page": "app/page.js"
 }
