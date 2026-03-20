@@ -33,8 +33,8 @@ export default function Auth() {
   const handleGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: 'https://dads-diary-m0-git-feature-m1-auth-rusty-pangs-projects.vercel.app/auth/callback' }
-
+      options: { redirectTo: `https://dads-diary-m0-git-feature-m1-auth-rusty-pangs-projects.vercel.app/auth/callback` }
+    })
   }
 
   return (
