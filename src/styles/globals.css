@@ -1,0 +1,10 @@
+/* Tailwind placeholder - will configure next */
+html {
+  font-family: system-ui, sans-serif;
+}
+body {
+  background: #020617;
+  color: #f8fafc;
+  margin: 0;
+  padding: 0;
+}
