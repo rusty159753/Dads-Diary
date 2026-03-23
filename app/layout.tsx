@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { createClient } from '@/lib/supabase/server'
 import Header from '@/components/Header'
-import './globals.css'
+import '@/styles/globals.css'
 
 export const metadata: Metadata = {
   title: "Dad's Diary",
