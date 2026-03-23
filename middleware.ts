@@ -17,7 +17,7 @@ export async function middleware(request: NextRequest) {
           return request.cookies.get(name)?.value
         },
         set(name: string, value: string, options: Record<string, unknown>) {
-          request.cookies.set({ name, value, ...(options as Parameters<typeof request.cookies.set>[0]) })
+          request.cookies.set(name, value)
           response = NextResponse.next({
             request: {
               headers: request.headers,
