@@ -19,7 +19,7 @@ export default async function RootLayout({
   return (
     <html lang="en">
       <body className="bg-slate-950 text-slate-100 min-h-screen">
-        <Header userEmail={user?.email ?? null} />
+        {user && <Header userEmail={user.email ?? null} />}
         <main>{children}</main>
       </body>
     </html>
