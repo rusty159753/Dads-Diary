@@ -35,7 +35,7 @@ export default function Auth() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-4">
       <div className="bg-slate-800/80 backdrop-blur-xl shadow-2xl rounded-3xl p-8 max-w-md w-full border border-slate-700/50">
         <h1 className="text-4xl font-bold text-center bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-2">
-          Dad's Diary
+          Dad&apos;s Diary
         </h1>
         <p className="text-slate-400 text-center mb-8">Capture moments that matter.</p>
         
