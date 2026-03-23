@@ -2,7 +2,6 @@
 import { useState } from 'react'
 import { createClient } from '@/lib/supabase'
 import { useRouter } from 'next/navigation'
-
 export default function Auth() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
@@ -11,16 +10,13 @@ export default function Auth() {
   const [error, setError] = useState('')
   const router = useRouter()
   const supabase = createClient()
-
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     setError('')
-
     const { data, error: authError } = isSignup
       ? await supabase.auth.signUp({ email, password })
       : await supabase.auth.signInWithPassword({ email, password })
-
     if (authError) {
       setError(authError.message)
     } else if (data.user) {
@@ -29,19 +25,17 @@ export default function Auth() {
     }
     setLoading(false)
   }
-
   const handleGoogle = async () => {
     await supabase.auth.signInWithOAuth({
       provider: 'google',
-      options: { redirectTo: `https://dads-diary-m0-git-feature-m1-auth-rusty-pangs-projects.vercel.app/auth/callback` }
+      options: { redirectTo: `${process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin}/auth/callback` }
     })
   }
-
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-4">
       <div className="bg-slate-800/80 backdrop-blur-xl shadow-2xl rounded-3xl p-8 max-w-md w-full border border-slate-700/50">
         <h1 className="text-4xl font-bold text-center bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-2">
-          Dad&apos;s Diary
+          Dad's Diary
         </h1>
         <p className="text-slate-400 text-center mb-8">Capture moments that matter.</p>
         
@@ -56,13 +50,12 @@ export default function Auth() {
             </svg>
             Continue with Google
           </button>
-          
+
           <div className="flex items-center py-4">
             <div className="flex-1 h-px bg-slate-700" />
             <span className="px-4 text-xs text-slate-500 uppercase tracking-wider font-medium">or</span>
             <div className="flex-1 h-px bg-slate-700" />
           </div>
-
           <form onSubmit={handleAuth} className="space-y-4">
             {error && (
               <div className="p-3 bg-red-500/20 border border-red-500/50 text-red-300 rounded-xl text-sm">
@@ -99,7 +92,6 @@ export default function Auth() {
               {loading ? 'Loading...' : isSignup ? 'Create Account' : 'Sign In'}
             </button>
           </form>
-
           <button
             type="button"
             onClick={() => setIsSignup(!isSignup)}
