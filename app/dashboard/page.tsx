@@ -1,18 +1,39 @@
-export default function Dashboard() {
+import { createClient } from '@/lib/supabase/server'
+import { redirect } from 'next/navigation'
+
+export default async function Dashboard() {
+  const supabase = createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
+    redirect('/auth')
+  }
+
+  const { data: children } = await supabase
+    .from('childrenprofiles')
+    .select('id, name')
+    .eq('user_id', user.id)
+
+  if (!children || children.length === 0) {
+    redirect('/onboarding')
+  }
+
   return (
     <div className="min-h-screen p-12 bg-gradient-to-br from-slate-900 to-slate-950">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-5xl font-bold text-slate-100 mb-12 text-center">
+        <h1 className="text-3xl font-bold text-slate-100 mb-8">
           Your Dashboard
         </h1>
-        <p className="text-xl text-slate-400 text-center mb-12">
-          Kids and journal entries will appear here.
+        <p className="text-slate-400 mb-4">
+          Your children:
         </p>
-        <div className="text-center">
-          <a href="/auth" className="text-blue-400 hover:text-blue-300 text-lg underline">
-            ← Back to login
-          </a>
-        </div>
+        <ul className="space-y-2">
+          {children.map((child) => (
+            <li key={child.id} className="text-slate-200 bg-slate-800/50 rounded-xl px-4 py-3 border border-slate-700/50">
+              {child.name}
+            </li>
+          ))}
+        </ul>
       </div>
     </div>
   )
