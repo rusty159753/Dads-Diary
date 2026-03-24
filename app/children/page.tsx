@@ -177,7 +177,7 @@ export default function Children() {
         )}
 
         {showForm && (
-          <div className="bg-slate-800/80 backdrop-blur-xl rounded-2xl p-6 border border-slate-700/50 mb-6">
+          <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 mb-6">
             <h2 className="text-lg font-semibold text-slate-100 mb-4">
               {editingId ? 'Edit child' : 'Add a child'}
             </h2>
@@ -192,7 +192,7 @@ export default function Children() {
                   placeholder="First name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-slate-400 text-slate-100"
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-slate-400 text-slate-100"
                   required
                   disabled={saving}
                 />
@@ -206,7 +206,7 @@ export default function Children() {
                   type="date"
                   value={birthdate}
                   onChange={(e) => setBirthdate(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-700/50 border border-slate-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-slate-100"
+                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-slate-100 [color-scheme:dark]"
                   disabled={saving}
                 />
               </div>
@@ -245,12 +245,12 @@ export default function Children() {
             {children.map((child) => (
               <li
                 key={child.id}
-                className="bg-slate-800/50 rounded-xl px-5 py-4 border border-slate-700/50 flex items-center justify-between"
+                className="bg-slate-800 rounded-xl px-5 py-4 border border-slate-700 flex items-center justify-between"
               >
                 <div>
                   <span className="text-slate-100 font-medium">{child.name}</span>
                   {child.birthdate && (
-                    <span className="text-slate-500 text-sm ml-3">{child.birthdate}</span>
+                    <span className="text-slate-400 text-sm ml-3">{child.birthdate}</span>
                   )}
                 </div>
                 <div className="flex gap-2">
