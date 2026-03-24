@@ -53,11 +53,11 @@ export default function Children() {
   }
 
   const startEdit = (child: ChildProfile) => {
+    setDeleteConfirm(null)
     setName(child.name)
     setBirthdate(child.birthdate || '')
     setEditingId(child.id)
     setShowForm(true)
-    setDeleteConfirm(null)
   }
 
   const handleSave = async (e: React.FormEvent) => {
@@ -133,6 +133,7 @@ export default function Children() {
       setError(deleteError.message)
     } else {
       setDeleteConfirm(null)
+      resetForm()
       await fetchChildren()
       router.refresh()
     }
@@ -214,7 +215,7 @@ export default function Children() {
                 <button
                   type="submit"
                   disabled={saving || !name.trim()}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:opacity-50 text-white py-2 px-6 rounded-xl font-semibold transition-all duration-300"
+                  className="bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-2 px-6 rounded-xl font-semibold transition-all duration-300"
                 >
                   {saving ? 'Saving...' : editingId ? 'Update' : 'Add'}
                 </button>
@@ -243,49 +244,53 @@ export default function Children() {
         ) : (
           <ul className="space-y-3">
             {children.map((child) => (
-              <li
-                key={child.id}
-                className="bg-slate-800 rounded-xl px-5 py-4 border border-slate-700 flex items-center justify-between"
-              >
-                <div>
-                  <span className="text-slate-100 font-medium">{child.name}</span>
-                  {child.birthdate && (
-                    <span className="text-slate-400 text-sm ml-3">{child.birthdate}</span>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={() => startEdit(child)}
-                    className="text-sm text-slate-400 hover:text-slate-200 px-3 py-1 transition-colors"
-                  >
-                    Edit
-                  </button>
-                  {deleteConfirm === child.id ? (
-                    <div className="flex gap-2 items-center">
-                      <span className="text-sm text-red-400">Delete?</span>
+              <li key={child.id} className="rounded-xl border border-slate-700 overflow-hidden">
+                {deleteConfirm === child.id ? (
+                  <div className="bg-red-950 px-5 py-4 flex items-center justify-between">
+                    <div>
+                      <p className="text-red-300 font-semibold text-sm">Delete {child.name}?</p>
+                      <p className="text-red-400 text-xs mt-0.5">This cannot be undone.</p>
+                    </div>
+                    <div className="flex gap-2">
                       <button
                         onClick={() => handleDelete(child.id)}
                         disabled={saving}
-                        className="text-sm text-red-400 hover:text-red-300 font-semibold px-2 py-1 transition-colors"
+                        className="bg-red-600 hover:bg-red-700 disabled:opacity-50 text-white text-sm font-semibold px-4 py-2 rounded-lg transition-colors"
                       >
-                        Yes
+                        {saving ? 'Deleting...' : 'Delete'}
                       </button>
                       <button
                         onClick={() => setDeleteConfirm(null)}
-                        className="text-sm text-slate-400 hover:text-slate-200 px-2 py-1 transition-colors"
+                        className="bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm px-4 py-2 rounded-lg transition-colors"
                       >
-                        No
+                        Cancel
                       </button>
                     </div>
-                  ) : (
-                    <button
-                      onClick={() => setDeleteConfirm(child.id)}
-                      className="text-sm text-red-400/70 hover:text-red-400 px-3 py-1 transition-colors"
-                    >
-                      Delete
-                    </button>
-                  )}
-                </div>
+                  </div>
+                ) : (
+                  <div className="bg-slate-800 px-5 py-4 flex items-center justify-between">
+                    <div>
+                      <span className="text-slate-100 font-medium">{child.name}</span>
+                      {child.birthdate && (
+                        <span className="text-slate-400 text-sm ml-3">{child.birthdate}</span>
+                      )}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => startEdit(child)}
+                        className="text-sm text-slate-400 hover:text-slate-200 px-3 py-1 transition-colors"
+                      >
+                        Edit
+                      </button>
+                      <button
+                        onClick={() => { resetForm(); setDeleteConfirm(child.id) }}
+                        className="text-sm text-red-400 hover:text-red-300 px-3 py-1 transition-colors"
+                      >
+                        Delete
+                      </button>
+                    </div>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
