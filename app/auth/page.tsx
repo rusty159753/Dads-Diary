@@ -20,27 +20,31 @@ export default function Auth() {
     setError('')
     setSuccess('')
 
-    if (isSignup) {
-      const { data, error: authError } = await supabase.auth.signUp({ email, password })
-      if (authError) {
-        setError(authError.message)
-      } else if (data.session) {
-        router.push('/dashboard')
-        router.refresh()
+    try {
+      if (isSignup) {
+        const { data, error: authError } = await supabase.auth.signUp({ email, password })
+        if (authError) {
+          setError(authError.message)
+        } else if (data.session) {
+          router.push('/dashboard')
+          router.refresh()
+        } else {
+          setSuccess('Account created. Check your email to confirm, then sign in.')
+        }
       } else {
-        setSuccess('Account created. Check your email to confirm, then sign in.')
+        const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
+        if (authError) {
+          setError(authError.message)
+        } else if (data.user) {
+          router.push('/dashboard')
+          router.refresh()
+        }
       }
-    } else {
-      const { data, error: authError } = await supabase.auth.signInWithPassword({ email, password })
-      if (authError) {
-        setError(authError.message)
-      } else if (data.user) {
-        router.push('/dashboard')
-        router.refresh()
-      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.')
+    } finally {
+      setLoading(false)
     }
-
-    setLoading(false)
   }
 
   const handleForgotPassword = async (e: React.FormEvent) => {
@@ -48,16 +52,21 @@ export default function Auth() {
     setLoading(true)
     setError('')
     setSuccess('')
-    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin
-    const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: `${siteUrl}/auth/callback?next=/auth/reset-password`,
-    })
-    if (resetError) {
-      setError(resetError.message)
-    } else {
-      setSuccess('Check your email for a password reset link.')
+    try {
+      const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? window.location.origin
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${siteUrl}/auth/callback?next=/auth/reset-password`,
+      })
+      if (resetError) {
+        setError(resetError.message)
+      } else {
+        setSuccess('Check your email for a password reset link.')
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.')
+    } finally {
+      setLoading(false)
     }
-    setLoading(false)
   }
 
   const handleGoogle = async () => {
@@ -80,12 +89,12 @@ export default function Auth() {
           <p className="text-slate-400 text-center mb-8">Reset your password</p>
           <form onSubmit={handleForgotPassword} className="space-y-4">
             {error && (
-              <div className="p-3 bg-red-500/20 border border-red-500/50 text-red-300 rounded-xl text-sm">
+              <div className="p-3 bg-red-900 border border-red-700 text-red-300 rounded-xl text-sm">
                 {error}
               </div>
             )}
             {success && (
-              <div className="p-3 bg-green-500/20 border border-green-500/50 text-green-300 rounded-xl text-sm">
+              <div className="p-3 bg-green-900 border border-green-700 text-green-300 rounded-xl text-sm">
                 {success}
               </div>
             )}
@@ -93,7 +102,7 @@ export default function Auth() {
               type="email"
               placeholder="your@email.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); setError('') }}
               className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-slate-400 text-slate-100"
               required
               disabled={loading}
@@ -144,12 +153,12 @@ export default function Auth() {
 
           <form onSubmit={handleAuth} className="space-y-4">
             {error && (
-              <div className="p-3 bg-red-500/20 border border-red-500/50 text-red-300 rounded-xl text-sm">
+              <div className="p-3 bg-red-900 border border-red-700 text-red-300 rounded-xl text-sm">
                 {error}
               </div>
             )}
             {success && (
-              <div className="p-3 bg-green-500/20 border border-green-500/50 text-green-300 rounded-xl text-sm">
+              <div className="p-3 bg-green-900 border border-green-700 text-green-300 rounded-xl text-sm">
                 {success}
               </div>
             )}
@@ -158,7 +167,7 @@ export default function Auth() {
               type="email"
               placeholder="your@email.com"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); setError('') }}
               className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-slate-400 text-slate-100"
               required
               disabled={loading}
@@ -168,7 +177,7 @@ export default function Auth() {
               type="password"
               placeholder="Password"
               value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              onChange={(e) => { setPassword(e.target.value); setError('') }}
               className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-slate-400 text-slate-100"
               required
               minLength={6}
