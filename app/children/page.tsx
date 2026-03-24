@@ -172,7 +172,7 @@ export default function Children() {
         </div>
 
         {error && (
-          <div className="p-3 bg-red-500/20 border border-red-500/50 text-red-300 rounded-xl text-sm mb-4">
+          <div className="p-3 bg-red-900 border border-red-700 text-red-300 rounded-xl text-sm mb-4">
             {error}
           </div>
         )}
@@ -246,10 +246,10 @@ export default function Children() {
             {children.map((child) => (
               <li key={child.id} className="rounded-xl border border-slate-700 overflow-hidden">
                 {deleteConfirm === child.id ? (
-                  <div className="bg-red-950 px-5 py-4 flex items-center justify-between">
+                  <div className="bg-red-900 border-l-4 border-red-500 px-5 py-4 flex items-center justify-between">
                     <div>
-                      <p className="text-red-300 font-semibold text-sm">Delete {child.name}?</p>
-                      <p className="text-red-400 text-xs mt-0.5">This cannot be undone.</p>
+                      <p className="text-red-200 font-semibold text-sm">Delete {child.name}?</p>
+                      <p className="text-red-300 text-xs mt-0.5">This cannot be undone.</p>
                     </div>
                     <div className="flex gap-2">
                       <button
