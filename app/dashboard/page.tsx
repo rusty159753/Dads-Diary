@@ -28,8 +28,7 @@ export default async function Dashboard() {
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-slate-200">Your Children</h2>
-            
-              <a href="/children"
+            <a href="/children"
               className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
             >
               Manage children
@@ -37,10 +36,10 @@ export default async function Dashboard() {
           </div>
           <ul className="space-y-2">
             {children.map((child) => (
-              <li key={child.id} className="text-slate-200 bg-slate-800/50 rounded-xl px-4 py-3 border border-slate-700/50 flex items-center justify-between">
+              <li key={child.id} className="text-slate-200 bg-slate-800 rounded-xl px-4 py-3 border border-slate-700 flex items-center justify-between">
                 <span>{child.name}</span>
                 {child.birthdate && (
-                  <span className="text-slate-500 text-sm">{child.birthdate}</span>
+                  <span className="text-slate-400 text-sm">{child.birthdate}</span>
                 )}
               </li>
             ))}
