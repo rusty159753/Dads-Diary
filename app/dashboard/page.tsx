@@ -29,7 +29,7 @@ export default async function Dashboard() {
           <div className="flex items-center justify-between mb-4">
             <h2 className="text-lg font-semibold text-slate-200">Your Children</h2>
             
-              href="/children"
+              <a href="/children"
               className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
             >
               Manage children
