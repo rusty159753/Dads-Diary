@@ -41,21 +41,21 @@ export default function ResetPassword() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-4">
-      <div className="bg-slate-800 shadow-2xl rounded-3xl p-8 max-w-md w-full border border-slate-700">
-        <h1 className="text-4xl font-bold text-center bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-2">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="bg-white shadow-sm rounded-3xl p-8 max-w-md w-full border border-gray-200">
+        <h1 className="text-4xl font-bold text-center text-blue-600 mb-2">
           Dad&apos;s Diary
         </h1>
-        <p className="text-slate-400 text-center mb-8">Set your new password</p>
+        <p className="text-gray-500 text-center mb-8">Set your new password</p>
 
         {success ? (
-          <div className="p-3 bg-green-500/20 border border-green-500/50 text-green-300 rounded-xl text-sm text-center">
+          <div className="p-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm text-center">
             Password updated. Redirecting to sign in...
           </div>
         ) : (
           <form onSubmit={handleReset} className="space-y-4">
             {error && (
-              <div className="p-3 bg-red-500/20 border border-red-500/50 text-red-300 rounded-xl text-sm">
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
                 {error}
               </div>
             )}
@@ -64,7 +64,7 @@ export default function ResetPassword() {
               placeholder="New password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-slate-400 text-slate-100"
+              className="w-full px-4 py-3 bg-white border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 text-gray-900"
               required
               minLength={6}
               disabled={loading}
@@ -74,7 +74,7 @@ export default function ResetPassword() {
               placeholder="Confirm new password"
               value={confirmPassword}
               onChange={(e) => setConfirmPassword(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-slate-400 text-slate-100"
+              className="w-full px-4 py-3 bg-white border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 text-gray-900"
               required
               minLength={6}
               disabled={loading}
@@ -82,7 +82,7 @@ export default function ResetPassword() {
             <button
               type="submit"
               disabled={loading || !password || !confirmPassword}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-3 px-6 rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-3 px-6 rounded-2xl font-semibold shadow-sm hover:shadow-md transition-all duration-300"
             >
               {loading ? 'Updating...' : 'Update Password'}
             </button>
