@@ -40,7 +40,7 @@ export default function Auth() {
           router.refresh()
         }
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred. Please try again.')
     } finally {
       setLoading(false)
@@ -62,7 +62,7 @@ export default function Auth() {
       } else {
         setSuccess('Check your email for a password reset link.')
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred. Please try again.')
     } finally {
       setLoading(false)
@@ -81,20 +81,20 @@ export default function Auth() {
 
   if (isForgot) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-4">
-        <div className="bg-slate-800 shadow-2xl rounded-3xl p-8 max-w-md w-full border border-slate-700">
-          <h1 className="text-4xl font-bold text-center bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-2">
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div className="bg-white shadow-sm rounded-3xl p-8 max-w-md w-full border border-gray-200">
+          <h1 className="text-4xl font-bold text-center text-blue-600 mb-2">
             Dad&apos;s Diary
           </h1>
-          <p className="text-slate-400 text-center mb-8">Reset your password</p>
+          <p className="text-gray-500 text-center mb-8">Reset your password</p>
           <form onSubmit={handleForgotPassword} className="space-y-4">
             {error && (
-              <div className="p-3 bg-red-900 border border-red-700 text-red-300 rounded-xl text-sm">
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
                 {error}
               </div>
             )}
             {success && (
-              <div className="p-3 bg-green-900 border border-green-700 text-green-300 rounded-xl text-sm">
+              <div className="p-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm">
                 {success}
               </div>
             )}
@@ -103,14 +103,14 @@ export default function Auth() {
               placeholder="your@email.com"
               value={email}
               onChange={(e) => { setEmail(e.target.value); setError('') }}
-              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-slate-400 text-slate-100"
+              className="w-full px-4 py-3 bg-white border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 text-gray-900"
               required
               disabled={loading}
             />
             <button
               type="submit"
               disabled={loading || !email}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-3 px-6 rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-3 px-6 rounded-2xl font-semibold shadow-sm hover:shadow-md transition-all duration-300"
             >
               {loading ? 'Sending...' : 'Send Reset Link'}
             </button>
@@ -118,7 +118,7 @@ export default function Auth() {
           <button
             type="button"
             onClick={() => { setIsForgot(false); setError(''); setSuccess('') }}
-            className="w-full text-slate-400 hover:text-slate-200 text-sm font-medium transition-colors py-2 mt-4"
+            className="w-full text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors py-2 mt-4"
           >
             Back to Sign In
           </button>
@@ -128,17 +128,17 @@ export default function Auth() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-4">
-      <div className="bg-slate-800 shadow-2xl rounded-3xl p-8 max-w-md w-full border border-slate-700">
-        <h1 className="text-4xl font-bold text-center bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-2">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="bg-white shadow-sm rounded-3xl p-8 max-w-md w-full border border-gray-200">
+        <h1 className="text-4xl font-bold text-center text-blue-600 mb-2">
           Dad&apos;s Diary
         </h1>
-        <p className="text-slate-400 text-center mb-8">Capture moments that matter.</p>
+        <p className="text-gray-500 text-center mb-8">Capture moments that matter.</p>
 
         <div className="space-y-4">
           <button
             onClick={handleGoogle}
-            className="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-2xl font-semibold flex items-center justify-center gap-3 transition-all duration-300 shadow-lg hover:shadow-xl"
+            className="w-full bg-red-600 hover:bg-red-700 text-white py-3 px-6 rounded-2xl font-semibold flex items-center justify-center gap-3 transition-all duration-300 shadow-sm hover:shadow-md"
             disabled={loading}
           >
             <span className="text-lg font-bold">G</span>
@@ -146,19 +146,19 @@ export default function Auth() {
           </button>
 
           <div className="flex items-center py-4">
-            <div className="flex-1 h-px bg-slate-700" />
-            <span className="px-4 text-xs text-slate-500 uppercase tracking-wider font-medium">or</span>
-            <div className="flex-1 h-px bg-slate-700" />
+            <div className="flex-1 h-px bg-gray-200" />
+            <span className="px-4 text-xs text-gray-400 uppercase tracking-wider font-medium">or</span>
+            <div className="flex-1 h-px bg-gray-200" />
           </div>
 
           <form onSubmit={handleAuth} className="space-y-4">
             {error && (
-              <div className="p-3 bg-red-900 border border-red-700 text-red-300 rounded-xl text-sm">
+              <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
                 {error}
               </div>
             )}
             {success && (
-              <div className="p-3 bg-green-900 border border-green-700 text-green-300 rounded-xl text-sm">
+              <div className="p-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm">
                 {success}
               </div>
             )}
@@ -168,7 +168,7 @@ export default function Auth() {
               placeholder="your@email.com"
               value={email}
               onChange={(e) => { setEmail(e.target.value); setError('') }}
-              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-slate-400 text-slate-100"
+              className="w-full px-4 py-3 bg-white border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 text-gray-900"
               required
               disabled={loading}
             />
@@ -178,7 +178,7 @@ export default function Auth() {
               placeholder="Password"
               value={password}
               onChange={(e) => { setPassword(e.target.value); setError('') }}
-              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-slate-400 text-slate-100"
+              className="w-full px-4 py-3 bg-white border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 text-gray-900"
               required
               minLength={6}
               disabled={loading}
@@ -187,7 +187,7 @@ export default function Auth() {
             <button
               type="button"
               onClick={() => { setIsForgot(true); setError('') }}
-              className="text-slate-400 hover:text-slate-200 text-sm transition-colors"
+              className="text-gray-500 hover:text-gray-700 text-sm transition-colors"
             >
               Forgot password?
             </button>
@@ -195,7 +195,7 @@ export default function Auth() {
             <button
               type="submit"
               disabled={loading || !email || !password}
-              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-3 px-6 rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+              className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-3 px-6 rounded-2xl font-semibold shadow-sm hover:shadow-md transition-all duration-300"
             >
               {loading ? 'Loading...' : isSignup ? 'Create Account' : 'Sign In'}
             </button>
@@ -204,7 +204,7 @@ export default function Auth() {
           <button
             type="button"
             onClick={() => { setIsSignup(!isSignup); setError(''); setSuccess('') }}
-            className="w-full text-slate-400 hover:text-slate-200 text-sm font-medium transition-colors py-2"
+            className="w-full text-gray-500 hover:text-gray-700 text-sm font-medium transition-colors py-2"
           >
             {isSignup
               ? 'Already have an account? Sign In'
