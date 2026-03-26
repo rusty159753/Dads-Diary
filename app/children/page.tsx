@@ -142,21 +142,21 @@ export default function Children() {
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 to-slate-950">
-        <p className="text-slate-400">Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <p className="text-gray-500">Loading...</p>
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen p-6 bg-gradient-to-br from-slate-900 to-slate-950">
+    <div className="min-h-screen p-6 bg-gray-50">
       <div className="max-w-2xl mx-auto">
         <div className="flex items-center justify-between mb-8">
-          <h1 className="text-2xl font-bold text-slate-100">Your Children</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Your Children</h1>
           <div className="flex gap-3">
             <button
               onClick={() => router.push('/dashboard')}
-              className="text-sm text-slate-400 hover:text-slate-200 transition-colors"
+              className="text-sm text-gray-500 hover:text-gray-700 transition-colors"
             >
               Dashboard
             </button>
@@ -172,19 +172,19 @@ export default function Children() {
         </div>
 
         {error && (
-          <div className="p-3 bg-red-900 border border-red-700 text-red-300 rounded-xl text-sm mb-4">
+          <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm mb-4">
             {error}
           </div>
         )}
 
         {showForm && (
-          <div className="bg-slate-800 rounded-2xl p-6 border border-slate-700 mb-6">
-            <h2 className="text-lg font-semibold text-slate-100 mb-4">
+          <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm mb-6">
+            <h2 className="text-lg font-semibold text-gray-900 mb-4">
               {editingId ? 'Edit child' : 'Add a child'}
             </h2>
             <form onSubmit={handleSave} className="space-y-4">
               <div>
-                <label htmlFor="childName" className="block text-sm font-medium text-slate-300 mb-1">
+                <label htmlFor="childName" className="block text-sm font-medium text-gray-700 mb-1">
                   Name
                 </label>
                 <input
@@ -193,13 +193,13 @@ export default function Children() {
                   placeholder="First name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-slate-400 text-slate-100"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 text-gray-900"
                   required
                   disabled={saving}
                 />
               </div>
               <div>
-                <label htmlFor="childBirthdate" className="block text-sm font-medium text-slate-300 mb-1">
+                <label htmlFor="childBirthdate" className="block text-sm font-medium text-gray-700 mb-1">
                   Date of birth (optional)
                 </label>
                 <input
@@ -207,7 +207,7 @@ export default function Children() {
                   type="date"
                   value={birthdate}
                   onChange={(e) => setBirthdate(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-slate-100 [color-scheme:dark]"
+                  className="w-full px-4 py-3 bg-white border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900"
                   disabled={saving}
                 />
               </div>
@@ -222,7 +222,7 @@ export default function Children() {
                 <button
                   type="button"
                   onClick={resetForm}
-                  className="text-slate-400 hover:text-slate-200 py-2 px-4 transition-colors"
+                  className="text-gray-500 hover:text-gray-700 py-2 px-4 transition-colors"
                 >
                   Cancel
                 </button>
@@ -233,7 +233,7 @@ export default function Children() {
 
         {children.length === 0 && !showForm ? (
           <div className="text-center py-12">
-            <p className="text-slate-400 mb-4">No children added yet.</p>
+            <p className="text-gray-500 mb-4">No children added yet.</p>
             <button
               onClick={() => { resetForm(); setShowForm(true) }}
               className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl transition-colors"
@@ -244,12 +244,12 @@ export default function Children() {
         ) : (
           <ul className="space-y-3">
             {children.map((child) => (
-              <li key={child.id} className="rounded-xl border border-slate-700 overflow-hidden">
+              <li key={child.id} className="rounded-xl border border-gray-200 overflow-hidden shadow-sm">
                 {deleteConfirm === child.id ? (
-                  <div className="bg-red-900 border-l-4 border-red-500 px-5 py-4 flex items-center justify-between">
+                  <div className="bg-red-50 border-l-4 border-red-500 px-5 py-4 flex items-center justify-between">
                     <div>
-                      <p className="text-red-200 font-semibold text-sm">Delete {child.name}?</p>
-                      <p className="text-red-300 text-xs mt-0.5">This cannot be undone.</p>
+                      <p className="text-red-700 font-semibold text-sm">Delete {child.name}?</p>
+                      <p className="text-red-600 text-xs mt-0.5">This cannot be undone.</p>
                     </div>
                     <div className="flex gap-2">
                       <button
@@ -261,30 +261,30 @@ export default function Children() {
                       </button>
                       <button
                         onClick={() => setDeleteConfirm(null)}
-                        className="bg-slate-700 hover:bg-slate-600 text-slate-200 text-sm px-4 py-2 rounded-lg transition-colors"
+                        className="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 text-sm px-4 py-2 rounded-lg transition-colors"
                       >
                         Cancel
                       </button>
                     </div>
                   </div>
                 ) : (
-                  <div className="bg-slate-800 px-5 py-4 flex items-center justify-between">
+                  <div className="bg-white px-5 py-4 flex items-center justify-between">
                     <div>
-                      <span className="text-slate-100 font-medium">{child.name}</span>
+                      <span className="text-gray-900 font-medium">{child.name}</span>
                       {child.birthdate && (
-                        <span className="text-slate-400 text-sm ml-3">{child.birthdate}</span>
+                        <span className="text-gray-500 text-sm ml-3">{child.birthdate}</span>
                       )}
                     </div>
                     <div className="flex gap-2">
                       <button
                         onClick={() => startEdit(child)}
-                        className="text-sm text-slate-400 hover:text-slate-200 px-3 py-1 transition-colors"
+                        className="text-sm text-gray-500 hover:text-gray-700 px-3 py-1 transition-colors"
                       >
                         Edit
                       </button>
                       <button
                         onClick={() => { resetForm(); setDeleteConfirm(child.id) }}
-                        className="text-sm text-red-400 hover:text-red-300 px-3 py-1 transition-colors"
+                        className="text-sm text-red-600 hover:text-red-700 px-3 py-1 transition-colors"
                       >
                         Delete
                       </button>
