@@ -51,24 +51,24 @@ export default function Onboarding() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-900 via-slate-800 to-slate-950 p-4">
-      <div className="bg-slate-800 shadow-2xl rounded-3xl p-8 max-w-md w-full border border-slate-700">
-        <h1 className="text-3xl font-bold text-center bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent mb-2">
+    <div className="min-h-screen flex items-center justify-center bg-gray-50 p-4">
+      <div className="bg-white shadow-sm rounded-3xl p-8 max-w-md w-full border border-gray-200">
+        <h1 className="text-3xl font-bold text-center text-blue-600 mb-2">
           Welcome to Dad&apos;s Diary
         </h1>
-        <p className="text-slate-400 text-center mb-8">
+        <p className="text-gray-500 text-center mb-8">
           Add your first child to get started.
         </p>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           {error && (
-            <div className="p-3 bg-red-500/20 border border-red-500/50 text-red-300 rounded-xl text-sm">
+            <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm">
               {error}
             </div>
           )}
 
           <div>
-            <label htmlFor="name" className="block text-sm font-medium text-slate-300 mb-1">
+            <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-1">
               Child&apos;s name
             </label>
             <input
@@ -77,14 +77,14 @@ export default function Onboarding() {
               placeholder="First name"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-slate-400 text-slate-100"
+              className="w-full px-4 py-3 bg-white border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 placeholder-gray-400 text-gray-900"
               required
               disabled={loading}
             />
           </div>
 
           <div>
-            <label htmlFor="birthdate" className="block text-sm font-medium text-slate-300 mb-1">
+            <label htmlFor="birthdate" className="block text-sm font-medium text-gray-700 mb-1">
               Date of birth (optional)
             </label>
             <input
@@ -92,7 +92,7 @@ export default function Onboarding() {
               type="date"
               value={birthdate}
               onChange={(e) => setBirthdate(e.target.value)}
-              className="w-full px-4 py-3 bg-slate-700 border border-slate-600 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-slate-100 [color-scheme:dark]"
+              className="w-full px-4 py-3 bg-white border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all duration-200 text-gray-900"
               disabled={loading}
             />
           </div>
@@ -100,7 +100,7 @@ export default function Onboarding() {
           <button
             type="submit"
             disabled={loading || !name.trim()}
-            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-3 px-6 rounded-2xl font-semibold shadow-lg hover:shadow-xl transition-all duration-300"
+            className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-3 px-6 rounded-2xl font-semibold shadow-sm hover:shadow-md transition-all duration-300"
           >
             {loading ? 'Saving...' : 'Continue'}
           </button>
