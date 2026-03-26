@@ -20,26 +20,26 @@ export default async function Dashboard() {
   }
 
   return (
-    <div className="min-h-screen p-6 bg-gradient-to-br from-slate-900 to-slate-950">
+    <div className="min-h-screen p-6 bg-gray-50">
       <div className="max-w-4xl mx-auto">
-        <h1 className="text-3xl font-bold text-slate-100 mb-8">
+        <h1 className="text-3xl font-bold text-gray-900 mb-8">
           Your Dashboard
         </h1>
         <div className="mb-8">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-semibold text-slate-200">Your Children</h2>
+            <h2 className="text-lg font-semibold text-gray-700">Your Children</h2>
             <a href="/children"
-              className="text-sm text-blue-400 hover:text-blue-300 transition-colors"
+              className="text-sm text-blue-600 hover:text-blue-700 transition-colors"
             >
               Manage children
             </a>
           </div>
           <ul className="space-y-2">
             {children.map((child) => (
-              <li key={child.id} className="text-slate-200 bg-slate-800 rounded-xl px-4 py-3 border border-slate-700 flex items-center justify-between">
-                <span>{child.name}</span>
+              <li key={child.id} className="text-gray-900 bg-white rounded-xl px-4 py-3 border border-gray-200 flex items-center justify-between shadow-sm">
+                <span className="font-medium">{child.name}</span>
                 {child.birthdate && (
-                  <span className="text-slate-400 text-sm">{child.birthdate}</span>
+                  <span className="text-gray-500 text-sm">{child.birthdate}</span>
                 )}
               </li>
             ))}
