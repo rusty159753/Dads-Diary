@@ -18,15 +18,15 @@ export default function Header({ userEmail }: HeaderProps) {
   }
 
   return (
-    <header className="w-full bg-slate-900 border-b border-slate-700/50 px-4 py-3 flex items-center justify-between">
-      <span className="text-blue-400 font-semibold text-sm">Dad&apos;s Diary</span>
+    <header className="w-full bg-white border-b border-gray-200 px-4 py-3 flex items-center justify-between">
+      <span className="text-blue-600 font-semibold text-sm">Dad&apos;s Diary</span>
       <div className="flex items-center gap-3">
         {userEmail && (
-          <span className="text-slate-400 text-sm hidden sm:block">{userEmail}</span>
+          <span className="text-gray-500 text-sm hidden sm:block">{userEmail}</span>
         )}
         <button
           onClick={handleLogout}
-          className="text-sm bg-slate-700 hover:bg-slate-600 text-slate-200 px-3 py-1.5 rounded-xl transition-colors"
+          className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-xl transition-colors"
         >
           Log out
         </button>
