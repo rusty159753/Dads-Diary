@@ -94,8 +94,7 @@ export default function Entries() {
         }
 
         const children = (childTagData || [])
-          .map((tag: { childrenprofiles: ChildProfile | null }) => tag.childrenprofiles)
-          .filter((child): child is ChildProfile => child !== null)
+          .flatMap((tag: { child_id: string; childrenprofiles: ChildProfile[] }) => tag.childrenprofiles)
 
         const photos = (photoData || []) as PhotoMetadata[]
         

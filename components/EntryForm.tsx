@@ -269,7 +269,7 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
       {/* Text Input */}
       <div className="mb-6">
         <label htmlFor="text" className="block text-sm font-medium text-gray-700 mb-2">
-          What's on your mind?
+          What&apos;s on your mind?
         </label>
         <textarea
           id="text"
