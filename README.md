@@ -13,3 +13,4 @@ Mobile-first PWA for fathers to privately store memories, photos, and messages f
 
 - Push to GitHub
 - Connect to Vercel
+# M1 Checkpoint
