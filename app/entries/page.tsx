@@ -10,12 +10,18 @@ interface ChildProfile {
   name: string
 }
 
+interface PhotoMetadata {
+  id: string
+  storage_path: string
+}
+
 interface EntryWithChildren {
   id: string
   text: string
   entry_date: string
   created_at: string
   children: ChildProfile[]
+  photos: PhotoMetadata[]
 }
 
 export default function Entries() {
@@ -64,7 +70,7 @@ export default function Entries() {
         return
       }
 
-      // For each entry, fetch its tagged children
+      // For each entry, fetch its tagged children and photos
       const entriesWithChildren: EntryWithChildren[] = []
       for (const entry of entriesData || []) {
         const { data: childTagData, error: childError } = await supabase
@@ -72,22 +78,30 @@ export default function Entries() {
           .select('child_id, childrenprofiles(id, name)')
           .eq('entry_id', entry.id)
 
+        const { data: photoData, error: photoError } = await supabase
+          .from('entry_photos')
+          .select('id, storage_path')
+          .eq('entry_id', entry.id)
+
         if (childError) {
           console.error(`Failed to fetch children for entry ${entry.id}:`, childError)
-          entriesWithChildren.push({
-            ...entry,
-            children: []
-          })
-        } else {
-          const children = (childTagData || [])
-            .map((tag: any) => tag.childrenprofiles)
-            .filter((child: any) => child !== null) as ChildProfile[]
-          
-          entriesWithChildren.push({
-            ...entry,
-            children
-          })
         }
+
+        if (photoError) {
+          console.error(`Failed to fetch photos for entry ${entry.id}:`, photoError)
+        }
+
+        const children = (childTagData || [])
+          .map((tag: any) => tag.childrenprofiles)
+          .filter((child: any) => child !== null) as ChildProfile[]
+
+        const photos = (photoData || []) as PhotoMetadata[]
+        
+        entriesWithChildren.push({
+          ...entry,
+          children,
+          photos
+        })
       }
 
       setEntries(entriesWithChildren)
@@ -197,6 +211,13 @@ export default function Entries() {
                 <p className="text-gray-900 mb-3 leading-relaxed">
                   {truncateText(entry.text)}
                 </p>
+
+                {/* Photo count indicator */}
+                {entry.photos.length > 0 && (
+                  <p className="text-xs text-gray-500 mb-3">
+                    📷 {entry.photos.length} photo{entry.photos.length !== 1 ? 's' : ''}
+                  </p>
+                )}
 
                 {entry.children.length > 0 && (
                   <div className="flex gap-2 flex-wrap">
