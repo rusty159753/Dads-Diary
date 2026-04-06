@@ -8,6 +8,12 @@ interface ChildProfile {
   name: string
 }
 
+interface UploadedPhoto {
+  file: File
+  preview: string
+  uploading?: boolean
+}
+
 interface EntryFormProps {
   onSuccess: () => void
   onCancel: () => void
@@ -21,9 +27,13 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [childrenLoading, setChildrenLoading] = useState(true)
+  const [uploadedPhotos, setUploadedPhotos] = useState<UploadedPhoto[]>([])
+  const [photoUploadError, setPhotoUploadError] = useState('')
   
   const supabase = createClient()
   const charLimit = 3000
+  const maxPhotoSize = 5 * 1024 * 1024 // 5MB
+  const allowedPhotoTypes = ['image/jpeg', 'image/png', 'image/webp']
 
   // Fetch user's children
   useEffect(() => {
@@ -47,6 +57,78 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
 
     fetchChildren()
   }, [])
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+
+    setPhotoUploadError('')
+    const newPhotos: UploadedPhoto[] = []
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+
+      // Validate file type
+      if (!allowedPhotoTypes.includes(file.type)) {
+        setPhotoUploadError('Only JPEG, PNG, and WebP files are allowed')
+        continue
+      }
+
+      // Validate file size
+      if (file.size > maxPhotoSize) {
+        setPhotoUploadError('Each photo must be under 5MB')
+        continue
+      }
+
+      // Create preview
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          newPhotos.push({
+            file,
+            preview: event.target.result as string
+          })
+          setUploadedPhotos(prev => [...prev, newPhotos[newPhotos.length - 1]])
+        }
+      }
+      reader.readAsDataURL(file)
+    }
+
+    // Reset file input
+    e.target.value = ''
+  }
+
+  const removePhoto = (index: number) => {
+    setUploadedPhotos(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const uploadPhotosToStorage = async (entryId: string, userId: string): Promise<string[]> => {
+    // uploadedPhotos are in memory with previews. Need to upload to Supabase Storage
+    // and get back the storage paths for entry_photos metadata insertion
+    const storagePaths: string[] = []
+
+    for (const photo of uploadedPhotos) {
+      const fileExt = photo.file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`
+      const storagePath = `users/${userId}/entries/${entryId}/${fileName}`
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('entries') // bucket name: entries
+        .upload(storagePath, photo.file, {
+          cacheControl: '3600',
+          upsert: false
+        })
+
+      if (uploadError) {
+        throw new Error(`Failed to upload photo ${photo.file.name}: ${uploadError.message}`)
+      }
+
+      storagePaths.push(storagePath)
+    }
+
+    return storagePaths
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -103,6 +185,34 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
         return
       }
 
+      // Upload photos and store metadata
+      if (uploadedPhotos.length > 0) {
+        try {
+          const storagePaths = await uploadPhotosToStorage(entryId, user.id)
+
+          // Insert photo metadata
+          const photoMetadata = storagePaths.map(path => ({
+            entry_id: entryId,
+            storage_path: path,
+            original_filename: uploadedPhotos[storagePaths.indexOf(path)].file.name,
+            file_size_bytes: uploadedPhotos[storagePaths.indexOf(path)].file.size
+          }))
+
+          const { error: photoError } = await supabase
+            .from('entry_photos')
+            .insert(photoMetadata)
+
+          if (photoError) {
+            // Note: photos are already in storage. Log but don't fail the entry.
+            console.warn('Failed to insert photo metadata:', photoError)
+          }
+        } catch (photoUploadErr) {
+          // Photos failed but entry exists. Log and continue.
+          console.warn('Photo upload error:', photoUploadErr)
+          setError(`Entry created but photo upload failed: ${String(photoUploadErr)}`)
+        }
+      }
+
       // Insert child tags if any selected
       if (selectedChildren.length > 0) {
         const childTagInserts = selectedChildren.map(childId => ({
@@ -131,6 +241,7 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
       setText('')
       setEntryDate(new Date().toISOString().split('T')[0])
       setSelectedChildren([])
+      setUploadedPhotos([])
       onSuccess()
     } catch (err) {
       setError(`Unexpected error: ${String(err)}`)
@@ -188,6 +299,57 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
           className="w-full px-4 py-2 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
         />
       </div>
+
+      {/* Photo Upload */}
+      <div className="mb-6">
+        <label htmlFor="photos" className="block text-sm font-medium text-gray-700 mb-2">
+          Add photos (optional)
+        </label>
+        <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-400 transition-colors">
+          <input
+            id="photos"
+            type="file"
+            multiple
+            accept="image/jpeg,image/png,image/webp"
+            onChange={handlePhotoSelect}
+            className="hidden"
+          />
+          <label htmlFor="photos" className="cursor-pointer block">
+            <p className="text-gray-600 font-medium">Click to select photos</p>
+            <p className="text-xs text-gray-400 mt-1">JPEG, PNG, WebP up to 5MB each</p>
+          </label>
+        </div>
+        {photoUploadError && (
+          <p className="text-xs text-red-600 mt-2">{photoUploadError}</p>
+        )}
+      </div>
+
+      {/* Photo Previews */}
+      {uploadedPhotos.length > 0 && (
+        <div className="mb-6">
+          <p className="text-sm font-medium text-gray-700 mb-3">
+            Photos ({uploadedPhotos.length})
+          </p>
+          <div className="grid grid-cols-3 gap-3">
+            {uploadedPhotos.map((photo, idx) => (
+              <div key={idx} className="relative group">
+                <img
+                  src={photo.preview}
+                  alt={`Preview ${idx + 1}`}
+                  className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                />
+                <button
+                  type="button"
+                  onClick={() => removePhoto(idx)}
+                  className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  ×
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Child Tag Selector */}
       <div className="mb-6">
