@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
-import { redirect } from 'next/navigation'
 import EntryForm from '@/components/EntryForm'
 
 interface ChildProfile {
@@ -25,6 +25,7 @@ interface EntryWithChildren {
 }
 
 export default function Entries() {
+  const router = useRouter()
   const [entries, setEntries] = useState<EntryWithChildren[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
@@ -37,12 +38,13 @@ export default function Entries() {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {
-        redirect('/auth')
+        router.push('/auth')
+        return
       }
       setAuthenticated(true)
     }
     checkAuth()
-  }, [])
+  }, [router])
 
   const fetchEntries = async () => {
     setLoading(true)
