@@ -34,6 +34,8 @@ export default function EntryDetail() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [photoUrls, setPhotoUrls] = useState<{ [key: string]: string }>({})
+  const [deleting, setDeleting] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const supabase = createClient()
 
   useEffect(() => {
@@ -121,6 +123,37 @@ export default function EntryDetail() {
       hour: '2-digit',
       minute: '2-digit'
     })
+  }
+
+  const handleDelete = async () => {
+    setDeleting(true)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setError('Not authenticated')
+        setDeleting(false)
+        return
+      }
+
+      // Soft delete: set deleted_at timestamp
+      const { error: deleteError } = await supabase
+        .from('entries')
+        .update({ deleted_at: new Date().toISOString() })
+        .eq('id', entryId)
+        .eq('user_id', user.id)
+
+      if (deleteError) {
+        setError(`Failed to delete entry: ${deleteError.message}`)
+        setDeleting(false)
+        return
+      }
+
+      // Redirect after successful delete
+      router.push('/entries')
+    } catch (err) {
+      setError(`Unexpected error: ${String(err)}`)
+      setDeleting(false)
+    }
   }
 
   if (loading) {
@@ -242,6 +275,12 @@ export default function EntryDetail() {
 
         {/* Action buttons */}
         <div className="flex gap-3 justify-end">
+          <button
+            onClick={() => setShowDeleteConfirm(true)}
+            className="px-6 py-2 border border-red-200 text-red-600 hover:bg-red-50 rounded-xl font-medium transition-colors"
+          >
+            Delete
+          </button>
           <Link
             href={`/entries/${entry.id}/edit`}
             className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-medium transition-colors"
@@ -249,6 +288,34 @@ export default function EntryDetail() {
             Edit
           </Link>
         </div>
+
+        {/* Delete confirmation modal */}
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+            <div className="bg-white rounded-2xl p-6 max-w-sm shadow-lg">
+              <h3 className="text-lg font-bold text-gray-900 mb-2">Delete entry?</h3>
+              <p className="text-gray-600 mb-6">
+                This entry will be permanently deleted. This action cannot be undone.
+              </p>
+              <div className="flex gap-3 justify-end">
+                <button
+                  onClick={() => setShowDeleteConfirm(false)}
+                  disabled={deleting}
+                  className="px-4 py-2 border border-gray-200 text-gray-700 rounded-xl font-medium hover:bg-gray-50 transition-colors disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={deleting}
+                  className="px-4 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-400 text-white rounded-xl font-medium transition-colors"
+                >
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )
