@@ -207,9 +207,11 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
             console.warn('Failed to insert photo metadata:', photoError)
           }
         } catch (photoUploadErr) {
-          // Photos failed but entry exists. Log and continue.
-          console.warn('Photo upload error:', photoUploadErr)
-          setError(`Entry created but photo upload failed: ${String(photoUploadErr)}`)
+          // Surface the actual error so we can diagnose it
+          const errMsg = photoUploadErr instanceof Error ? photoUploadErr.message : String(photoUploadErr)
+          setError(`Entry created but photo upload failed: ${errMsg}`)
+          setLoading(false)
+          return
         }
       }
 
