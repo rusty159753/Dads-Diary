@@ -231,7 +231,7 @@ export default function EntryDetail() {
                         <img
                           src={photoUrls[photo.id]}
                           alt="Entry photo"
-                          className="w-full h-64 object-cover bg-gray-100"
+                          className="w-full h-64 object-contain bg-gray-100"
                         />
                       ) : (
                         <div className="w-full h-64 bg-gray-100 flex items-center justify-center text-gray-400">
