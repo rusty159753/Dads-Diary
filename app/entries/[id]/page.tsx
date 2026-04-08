@@ -36,6 +36,7 @@ export default function EntryDetail() {
   const [photoUrls, setPhotoUrls] = useState<{ [key: string]: string }>({})
   const [deleting, setDeleting] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [selectedPhotoId, setSelectedPhotoId] = useState<string | null>(null)
   const supabase = createClient()
 
   useEffect(() => {
@@ -224,22 +225,62 @@ export default function EntryDetail() {
                 <h3 className="text-sm font-semibold text-gray-700 mb-4">
                   Photos ({entry.photos.length})
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-4 gap-3">
                   {entry.photos.map(photo => (
-                    <div key={photo.id} className="rounded-xl overflow-hidden border border-gray-200">
+                    <button
+                      key={photo.id}
+                      onClick={() => setSelectedPhotoId(photo.id)}
+                      className="relative group rounded-lg overflow-hidden border border-gray-200 hover:border-blue-400 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    >
                       {photoUrls[photo.id] ? (
                         <img
                           src={photoUrls[photo.id]}
                           alt="Entry photo"
-                          className="w-full h-64 object-contain bg-gray-100"
+                          className="w-full h-24 object-cover bg-gray-100"
                         />
                       ) : (
-                        <div className="w-full h-64 bg-gray-100 flex items-center justify-center text-gray-400">
+                        <div className="w-full h-24 bg-gray-100 flex items-center justify-center text-gray-400">
                           Loading...
                         </div>
                       )}
-                    </div>
+                      <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors flex items-center justify-center">
+                        <p className="text-white text-xs font-medium opacity-0 group-hover:opacity-100 transition-opacity">
+                          Click to view
+                        </p>
+                      </div>
+                    </button>
                   ))}
+                </div>
+              </div>
+            )}
+
+            {/* Photo Modal */}
+            {selectedPhotoId && (
+              <div className="fixed inset-0 bg-black/75 flex items-center justify-center p-4 z-50">
+                <div className="bg-white rounded-2xl p-6 max-w-2xl w-full max-h-[90vh] flex flex-col">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900">
+                      Photo
+                    </h3>
+                    <button
+                      onClick={() => setSelectedPhotoId(null)}
+                      className="text-gray-400 hover:text-gray-600 text-2xl font-light"
+                    >
+                      ×
+                    </button>
+                  </div>
+                  
+                  <div className="flex-1 overflow-auto flex items-center justify-center bg-gray-50 rounded-lg min-h-96">
+                    {photoUrls[selectedPhotoId] ? (
+                      <img
+                        src={photoUrls[selectedPhotoId]}
+                        alt="Full size photo"
+                        className="max-w-full max-h-full object-contain"
+                      />
+                    ) : (
+                      <p className="text-gray-500">Loading...</p>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
