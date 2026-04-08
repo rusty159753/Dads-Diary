@@ -16,6 +16,17 @@ interface EntryData {
   entry_date: string
 }
 
+interface PhotoMetadata {
+  id: string
+  storage_path: string
+  original_filename: string
+}
+
+interface UploadedPhoto {
+  file: File
+  preview: string
+}
+
 export default function EditEntry() {
   const router = useRouter()
   const params = useParams()
@@ -30,6 +41,10 @@ export default function EditEntry() {
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
   const [childrenLoading, setChildrenLoading] = useState(true)
+  const [existingPhotos, setExistingPhotos] = useState<PhotoMetadata[]>([])
+  const [newPhotos, setNewPhotos] = useState<UploadedPhoto[]>([])
+  const [photoUploadError, setPhotoUploadError] = useState('')
+  const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null)
 
   const supabase = createClient()
   const charLimit = 3000
@@ -83,11 +98,138 @@ export default function EditEntry() {
         setSelectedChildren(taggedChildren.map(t => t.child_id))
       }
 
+      // Fetch existing photos
+      const { data: photoData, error: photoError } = await supabase
+        .from('entry_photos')
+        .select('id, storage_path, original_filename')
+        .eq('entry_id', entryId)
+
+      if (!photoError && photoData) {
+        setExistingPhotos(photoData)
+      }
+
       setLoading(false)
     }
 
     fetchData()
   }, [entryId, router])
+
+  const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files
+    if (!files) return
+
+    setPhotoUploadError('')
+    const allowedPhotoTypes = ['image/jpeg', 'image/png', 'image/webp']
+    const maxPhotoSize = 5 * 1024 * 1024
+
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i]
+
+      if (!allowedPhotoTypes.includes(file.type)) {
+        setPhotoUploadError('Only JPEG, PNG, and WebP files are allowed')
+        continue
+      }
+
+      if (file.size > maxPhotoSize) {
+        setPhotoUploadError('Each photo must be under 5MB')
+        continue
+      }
+
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        if (event.target?.result) {
+          setNewPhotos(prev => [...prev, {
+            file,
+            preview: event.target.result as string
+          }])
+        }
+      }
+      reader.readAsDataURL(file)
+    }
+
+    e.target.value = ''
+  }
+
+  const removeNewPhoto = (index: number) => {
+    setNewPhotos(prev => prev.filter((_, i) => i !== index))
+  }
+
+  const handleDeleteExistingPhoto = async (photoId: string, storagePath: string) => {
+    setDeletingPhotoId(photoId)
+    try {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
+        setError('Not authenticated')
+        setDeletingPhotoId(null)
+        return
+      }
+
+      // Delete from storage
+      const { error: storageError } = await supabase.storage
+        .from('entries')
+        .remove([storagePath])
+
+      if (storageError) {
+        console.error('Storage deletion error:', storageError)
+      }
+
+      // Delete metadata record
+      const { error: dbError } = await supabase
+        .from('entry_photos')
+        .delete()
+        .eq('id', photoId)
+
+      if (dbError) {
+        setError(`Failed to delete photo: ${dbError.message}`)
+      } else {
+        setExistingPhotos(prev => prev.filter(p => p.id !== photoId))
+      }
+    } catch (err) {
+      setError(`Unexpected error: ${String(err)}`)
+    } finally {
+      setDeletingPhotoId(null)
+    }
+  }
+
+  const uploadNewPhotos = async (userId: string): Promise<boolean> => {
+    if (newPhotos.length === 0) return true
+
+    for (const photo of newPhotos) {
+      const fileExt = photo.file.name.split('.').pop()?.toLowerCase() || 'jpg'
+      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`
+      const storagePath = `users/${userId}/entries/${entryId}/${fileName}`
+
+      // Upload to storage
+      const { error: uploadError } = await supabase.storage
+        .from('entries')
+        .upload(storagePath, photo.file, {
+          cacheControl: '3600',
+          upsert: false
+        })
+
+      if (uploadError) {
+        setError(`Failed to upload photo: ${uploadError.message}`)
+        return false
+      }
+
+      // Insert metadata
+      const { error: metadataError } = await supabase
+        .from('entry_photos')
+        .insert({
+          entry_id: entryId,
+          storage_path: storagePath,
+          original_filename: photo.file.name,
+          file_size_bytes: photo.file.size
+        })
+
+      if (metadataError) {
+        setError(`Failed to save photo metadata: ${metadataError.message}`)
+        return false
+      }
+    }
+
+    return true
+  }
 
   const toggleChild = (childId: string) => {
     setSelectedChildren(prev =>
@@ -176,6 +318,13 @@ export default function EditEntry() {
           setSaving(false)
           return
         }
+      }
+
+      // Upload new photos
+      const photosUploaded = await uploadNewPhotos(user.id)
+      if (!photosUploaded) {
+        setSaving(false)
+        return
       }
 
       setSuccess('Entry updated successfully')
@@ -274,6 +423,83 @@ export default function EditEntry() {
               className="w-full px-4 py-2 border border-gray-200 rounded-xl text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
             />
           </div>
+
+          {/* Existing Photos */}
+          {existingPhotos.length > 0 && (
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Current photos ({existingPhotos.length})
+              </label>
+              <div className="grid grid-cols-3 gap-3">
+                {existingPhotos.map(photo => (
+                  <div key={photo.id} className="relative group">
+                    <div className="w-full h-24 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center text-xs text-gray-500 text-center p-2">
+                      {photo.original_filename}
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteExistingPhoto(photo.id, photo.storage_path)}
+                      disabled={deletingPhotoId === photo.id}
+                      className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 disabled:bg-gray-400 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* New Photo Upload */}
+          <div className="mb-6">
+            <label htmlFor="photos" className="block text-sm font-medium text-gray-700 mb-2">
+              Add more photos (optional)
+            </label>
+            <div className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center hover:border-blue-400 transition-colors">
+              <input
+                id="photos"
+                type="file"
+                multiple
+                accept="image/jpeg,image/png,image/webp"
+                onChange={handlePhotoSelect}
+                className="hidden"
+              />
+              <label htmlFor="photos" className="cursor-pointer block">
+                <p className="text-gray-600 font-medium">Click to select photos</p>
+                <p className="text-xs text-gray-400 mt-1">JPEG, PNG, WebP up to 5MB each</p>
+              </label>
+            </div>
+            {photoUploadError && (
+              <p className="text-xs text-red-600 mt-2">{photoUploadError}</p>
+            )}
+          </div>
+
+          {/* New Photo Previews */}
+          {newPhotos.length > 0 && (
+            <div className="mb-6">
+              <p className="text-sm font-medium text-gray-700 mb-3">
+                New photos ({newPhotos.length})
+              </p>
+              <div className="grid grid-cols-3 gap-3">
+                {newPhotos.map((photo, idx) => (
+                  <div key={idx} className="relative group">
+                    <img
+                      src={photo.preview}
+                      alt={`Preview ${idx + 1}`}
+                      className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => removeNewPhoto(idx)}
+                      className="absolute top-1 right-1 bg-red-500 text-white rounded-full w-6 h-6 flex items-center justify-center text-xs opacity-0 group-hover:opacity-100 transition-opacity"
+                    >
+                      ×
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* Child Tag Selector */}
           <div className="mb-6">
