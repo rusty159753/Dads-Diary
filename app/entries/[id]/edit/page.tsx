@@ -137,10 +137,11 @@ export default function EditEntry() {
 
       const reader = new FileReader()
       reader.onload = (event) => {
-        if (event.target?.result) {
+        const result = event.target?.result
+        if (result) {
           setNewPhotos(prev => [...prev, {
             file,
-            preview: event.target.result as string
+            preview: result as string
           }])
         }
       }
