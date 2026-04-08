@@ -45,6 +45,7 @@ export default function EditEntry() {
   const [newPhotos, setNewPhotos] = useState<UploadedPhoto[]>([])
   const [photoUploadError, setPhotoUploadError] = useState('')
   const [deletingPhotoId, setDeletingPhotoId] = useState<string | null>(null)
+  const [existingPhotoUrls, setExistingPhotoUrls] = useState<{ [key: string]: string }>({})
 
   const supabase = createClient()
   const charLimit = 3000
@@ -106,6 +107,23 @@ export default function EditEntry() {
 
       if (!photoError && photoData) {
         setExistingPhotos(photoData)
+
+        // Generate signed URLs for existing photos
+        const urls: { [key: string]: string } = {}
+        for (const photo of photoData) {
+          try {
+            const { data, error: urlError } = await supabase.storage
+              .from('entries')
+              .createSignedUrl(photo.storage_path, 3600)
+
+            if (!urlError && data) {
+              urls[photo.id] = data.signedUrl
+            }
+          } catch (err) {
+            console.error(`Failed to generate URL for photo ${photo.id}:`, err)
+          }
+        }
+        setExistingPhotoUrls(urls)
       }
 
       setLoading(false)
@@ -434,7 +452,18 @@ export default function EditEntry() {
               <div className="grid grid-cols-3 gap-3">
                 {existingPhotos.map(photo => (
                   <div key={photo.id} className="relative group">
-                    <div className="w-full h-24 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center text-xs text-gray-500 text-center p-2">
+                    {existingPhotoUrls[photo.id] ? (
+                      <img
+                        src={existingPhotoUrls[photo.id]}
+                        alt={photo.original_filename}
+                        className="w-full h-24 object-cover rounded-lg border border-gray-200"
+                      />
+                    ) : (
+                      <div className="w-full h-24 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center text-xs text-gray-500 text-center p-2">
+                        Loading...
+                      </div>
+                    )}
+                    <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white text-xs p-1 rounded-b-lg opacity-0 group-hover:opacity-100 transition-opacity truncate">
                       {photo.original_filename}
                     </div>
                     <button
