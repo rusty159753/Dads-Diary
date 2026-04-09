@@ -24,6 +24,12 @@ export default function Header({ userEmail }: HeaderProps) {
         {userEmail && (
           <span className="text-gray-500 text-sm hidden sm:block">{userEmail}</span>
         )}
+        <a
+          href="/settings/reminders"
+          className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block"
+        >
+          Reminders
+        </a>
         <button
           onClick={handleLogout}
           className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-xl transition-colors"
