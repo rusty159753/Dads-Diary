@@ -1,0 +1,116 @@
+# Tier 2 Milestone Gate - runs manually at milestone close
+# Combines Tier 1 checks with deeper automated tests and milestone-specific suites.
+# Trigger: workflow_dispatch only. Never runs automatically.
+# A failure here blocks milestone close. No merge to main until this passes.
+# Do not modify timeout values without Christopher approval.
+
+name: Eval - Milestone Gate (Tier 2)
+
+on:
+  workflow_dispatch:
+    inputs:
+      milestone:
+        description: "Which milestone to evaluate (m3, m4, m5, m6)"
+        required: true
+        type: choice
+        options:
+          - m3
+          - m4
+          - m5
+          - m6
+
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+  TEST_USER_ID: ${{ secrets.TEST_USER_ID }}
+  TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+  TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+  # Production refusal guard - never set this to true in CI
+  EVAL_ALLOW_PRODUCTION: "false"
+
+jobs:
+  tier-2-gate:
+    name: Tier 2 Milestone Gate (${{ github.event.inputs.milestone }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Guard - refuse production Supabase URL
+        run: |
+          if [[ "$SUPABASE_URL" == *"yagoticnplkqfzitjqge"* ]] && [[ "$EVAL_ALLOW_PRODUCTION" != "true" ]]; then
+            echo "ERROR: Eval suite is pointed at the production Supabase project."
+            echo "Set EVAL_ALLOW_PRODUCTION=true explicitly to override. This should never be done in CI."
+            exit 1
+          fi
+
+      - name: Set up test fixtures
+        run: npx ts-node evals/fixtures/test-user-setup.ts
+
+      # --- Tier 1 checks (same as PR gate) ---
+
+      - name: Category A - Security and Access Control
+        run: npx vitest run evals/automated/security --reporter=verbose
+
+      - name: Category B - Data Integrity
+        run: npx vitest run evals/automated/data-integrity --reporter=verbose
+
+      - name: Category C - Functional Smoke
+        run: npx vitest run evals/automated/functional --reporter=verbose
+
+      - name: Category D - Performance
+        run: npx vitest run evals/automated/performance --reporter=verbose
+
+      - name: Category E - Mobile Viewport Compliance
+        run: npx vitest run evals/automated/mobile --reporter=verbose
+
+      - name: SQL Audit - RLS Coverage
+        run: |
+          npx ts-node evals/sql/rls-coverage.ts || (echo "RLS coverage audit failed" && exit 1)
+
+      - name: SQL Audit - Orphan Entries
+        run: |
+          npx ts-node evals/sql/orphan-entries.ts || (echo "Orphan entries audit failed" && exit 1)
+
+      - name: SQL Audit - Index Presence
+        run: |
+          npx ts-node evals/sql/index-presence.ts || (echo "Index presence audit failed" && exit 1)
+
+      - name: SQL Audit - Service Role Key in Bundle
+        run: |
+          npx ts-node evals/sql/service-role-in-bundle.ts || (echo "Service role key detected in bundle" && exit 1)
+
+      # --- Tier 2 additions: milestone-specific Category F tests ---
+
+      - name: Category F - Milestone M3 Behavior
+        if: github.event.inputs.milestone == 'm3'
+        run: npx vitest run evals/automated/milestone-m3 --reporter=verbose
+
+      - name: Category F - Milestone M4 Behavior
+        if: github.event.inputs.milestone == 'm4'
+        run: npx vitest run evals/automated/milestone-m4 --reporter=verbose
+
+      - name: Category F - Milestone M5 Behavior
+        if: github.event.inputs.milestone == 'm5'
+        run: npx vitest run evals/automated/milestone-m5 --reporter=verbose
+
+      - name: Category F - Milestone M6 Behavior
+        if: github.event.inputs.milestone == 'm6'
+        run: npx vitest run evals/automated/milestone-m6 --reporter=verbose
+
+      # --- Cleanup ---
+
+      - name: Tear down test fixtures
+        if: always()
+        run: npx ts-node evals/fixtures/test-user-cleanup.ts
