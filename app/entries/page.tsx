@@ -52,12 +52,13 @@ export default function Entries() {
     setError('')
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) {
         setError('Not authenticated')
         setLoading(false)
         return
       }
+      const user = session.user
 
       // Fetch entries with their tagged children
       const { data: entriesData, error: entriesError } = await supabase

@@ -38,13 +38,13 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
   // Fetch user's children
   useEffect(() => {
     const fetchChildren = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) return
 
       const { data, error: err } = await supabase
         .from('childrenprofiles')
         .select('id, name')
-        .eq('user_id', user.id)
+        .eq('user_id', session.user.id)
         .order('name', { ascending: true })
 
       if (err) {
@@ -102,7 +102,7 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
     setUploadedPhotos(prev => prev.filter((_, i) => i !== index))
   }
 
-  const compressImage = (file: File, maxWidthPx = 1920, qualityJpeg = 0.82): Promise<File> => {
+  const compressImage = (file: File, maxWidthPx = 1200, qualityJpeg = 0.75): Promise<File> => {
     return new Promise((resolve) => {
       const img = new Image()
       const url = URL.createObjectURL(file)
@@ -181,12 +181,13 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
     setError('')
 
     try {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) {
+      const { data: { session } } = await supabase.auth.getSession()
+      if (!session?.user) {
         setError('Not authenticated')
         setLoading(false)
         return
       }
+      const user = session.user
 
       // Insert entry
       const { data: entryData, error: entryError } = await supabase
