@@ -62,7 +62,7 @@ jobs:
 
       - name: SQL Audit - RLS Coverage
         run: |
-          npx ts-node evals/sql/rls-coverage.sql || (echo "RLS coverage audit failed" && exit 1)
+          npx ts-node evals/sql/rls-coverage.ts || (echo "RLS coverage audit failed" && exit 1)
 
       - name: SQL Audit - Orphan Entries
         run: |
@@ -70,7 +70,7 @@ jobs:
 
       - name: SQL Audit - Index Presence
         run: |
-          npx ts-node evals/sql/index-presence.sql || (echo "Index presence audit failed" && exit 1)
+          npx ts-node evals/sql/index-presence.ts || (echo "Index presence audit failed" && exit 1)
 
       - name: SQL Audit - Service Role Key in Bundle
         run: |
