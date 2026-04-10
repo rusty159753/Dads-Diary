@@ -1,0 +1,77 @@
+# Tier 1 PR Gate - runs on every pull request targeting main
+# Must complete in under 3 minutes. Failure blocks merge.
+# Do not modify timeout values without Christopher approval.
+
+name: Eval - PR Gate (Tier 1)
+
+on:
+  pull_request:
+    branches:
+      - main
+
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+  TEST_USER_ID: ${{ secrets.TEST_USER_ID }}
+  TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+  TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+  # Production refusal guard - never set this to true in CI
+  EVAL_ALLOW_PRODUCTION: "false"
+
+jobs:
+  tier-1-gate:
+    name: Tier 1 PR Gate
+    runs-on: ubuntu-latest
+    timeout-minutes: 3
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Guard - refuse production Supabase URL
+        run: |
+          if [[ "$SUPABASE_URL" == *"yagoticnplkqfzitjqge"* ]] && [[ "$EVAL_ALLOW_PRODUCTION" != "true" ]]; then
+            echo "ERROR: Eval suite is pointed at the production Supabase project."
+            echo "Set EVAL_ALLOW_PRODUCTION=true explicitly to override. This should never be done in CI."
+            exit 1
+          fi
+
+      - name: Category A - Security and Access Control
+        run: npx vitest run evals/automated/security --reporter=verbose
+
+      - name: Category B - Data Integrity
+        run: npx vitest run evals/automated/data-integrity --reporter=verbose
+
+      - name: Category C - Functional Smoke
+        run: npx vitest run evals/automated/functional --reporter=verbose
+
+      - name: Category D - Performance
+        run: npx vitest run evals/automated/performance --reporter=verbose
+
+      - name: Category E - Mobile Viewport Compliance
+        run: npx vitest run evals/automated/mobile --reporter=verbose
+
+      - name: SQL Audit - RLS Coverage
+        run: |
+          npx ts-node evals/sql/rls-coverage.sql || (echo "RLS coverage audit failed" && exit 1)
+
+      - name: SQL Audit - Orphan Entries
+        run: |
+          npx ts-node evals/sql/orphan-entries.sql || (echo "Orphan entries audit failed" && exit 1)
+
+      - name: SQL Audit - Index Presence
+        run: |
+          npx ts-node evals/sql/index-presence.sql || (echo "Index presence audit failed" && exit 1)
+
+      - name: SQL Audit - Service Role Key in Bundle
+        run: |
+          npx ts-node evals/sql/service-role-in-bundle.sql || (echo "Service role key detected in bundle" && exit 1)
