@@ -73,38 +73,54 @@ export default function Entries() {
         return
       }
 
-      // For each entry, fetch its tagged children and photos
-      const entriesWithChildren: EntryWithChildren[] = []
-      for (const entry of entriesData || []) {
-        const { data: childTagData, error: childError } = await supabase
-          .from('entry_children')
-          .select('child_id, childrenprofiles(id, name)')
-          .eq('entry_id', entry.id)
+      // Batch fetch all child tags and photos in two queries instead of N+1 loops
+      const entryIds = (entriesData || []).map(e => e.id)
 
-        const { data: photoData, error: photoError } = await supabase
-          .from('entry_photos')
-          .select('id, storage_path')
-          .eq('entry_id', entry.id)
+      const [childTagResult, photoResult] = await Promise.all([
+        entryIds.length > 0
+          ? supabase
+              .from('entry_children')
+              .select('entry_id, childrenprofiles(id, name)')
+              .in('entry_id', entryIds)
+          : Promise.resolve({ data: [], error: null }),
+        entryIds.length > 0
+          ? supabase
+              .from('entry_photos')
+              .select('id, entry_id, storage_path')
+              .in('entry_id', entryIds)
+          : Promise.resolve({ data: [], error: null })
+      ])
 
-        if (childError) {
-          console.error(`Failed to fetch children for entry ${entry.id}:`, childError)
-        }
-
-        if (photoError) {
-          console.error(`Failed to fetch photos for entry ${entry.id}:`, photoError)
-        }
-
-        const children = (childTagData || [])
-          .flatMap((tag: { child_id: string; childrenprofiles: ChildProfile[] }) => tag.childrenprofiles)
-
-        const photos = (photoData || []) as PhotoMetadata[]
-        
-        entriesWithChildren.push({
-          ...entry,
-          children,
-          photos
-        })
+      if (childTagResult.error) {
+        console.error('Failed to fetch child tags:', childTagResult.error)
       }
+      if (photoResult.error) {
+        console.error('Failed to fetch photos:', photoResult.error)
+      }
+
+      // Index by entry_id for O(1) lookup
+      const childrenByEntry: Record<string, ChildProfile[]> = {}
+      for (const tag of (childTagResult.data || [])) {
+        const t = tag as { entry_id: string; childrenprofiles: ChildProfile[] }
+        if (!childrenByEntry[t.entry_id]) childrenByEntry[t.entry_id] = []
+        if (t.childrenprofiles) {
+          const cp = Array.isArray(t.childrenprofiles) ? t.childrenprofiles : [t.childrenprofiles]
+          childrenByEntry[t.entry_id].push(...cp)
+        }
+      }
+
+      const photosByEntry: Record<string, PhotoMetadata[]> = {}
+      for (const photo of (photoResult.data || [])) {
+        const p = photo as { id: string; entry_id: string; storage_path: string }
+        if (!photosByEntry[p.entry_id]) photosByEntry[p.entry_id] = []
+        photosByEntry[p.entry_id].push({ id: p.id, storage_path: p.storage_path })
+      }
+
+      const entriesWithChildren: EntryWithChildren[] = (entriesData || []).map(entry => ({
+        ...entry,
+        children: childrenByEntry[entry.id] || [],
+        photos: photosByEntry[entry.id] || []
+      }))
 
       setEntries(entriesWithChildren)
     } catch (err) {
