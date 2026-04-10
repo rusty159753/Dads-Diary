@@ -131,10 +131,6 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
   }
 
   const uploadPhotosToStorage = async (entryId: string, userId: string): Promise<string[]> => {
-    // uploadedPhotos are in memory with previews. Need to upload to Supabase Storage
-    // and get back the storage paths for entry_photos metadata insertion
-    const storagePaths: string[] = []
-
     const uploadOne = async (photo: UploadedPhoto): Promise<string> => {
       const compressed = await compressImage(photo.file)
       const fileExt = compressed.name.split('.').pop()?.toLowerCase() || 'jpg'
