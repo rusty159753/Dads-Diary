@@ -11,31 +11,42 @@ interface ChildProfile {
 interface UploadedPhoto {
   file: File
   preview: string
-  uploading?: boolean
+}
+
+interface OptimisticEntry {
+  id: string
+  text: string
+  entry_date: string
+  created_at: string
+  children: ChildProfile[]
+  photos: { id: string; storage_path: string }[]
+  _optimistic: true
+  _photoCount?: number
 }
 
 interface EntryFormProps {
+  onOptimisticAdd: (entry: OptimisticEntry) => void
   onSuccess: () => void
+  onFailed: (tempId: string, message: string) => void
   onCancel: () => void
 }
 
-export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
+export default function EntryForm({ onOptimisticAdd, onSuccess, onFailed, onCancel }: EntryFormProps) {
   const [text, setText] = useState('')
   const [entryDate, setEntryDate] = useState(new Date().toISOString().split('T')[0])
   const [selectedChildren, setSelectedChildren] = useState<string[]>([])
   const [children, setChildren] = useState<ChildProfile[]>([])
-  const [loading, setLoading] = useState(false)
+  const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [childrenLoading, setChildrenLoading] = useState(true)
   const [uploadedPhotos, setUploadedPhotos] = useState<UploadedPhoto[]>([])
   const [photoUploadError, setPhotoUploadError] = useState('')
-  
+
   const supabase = createClient()
   const charLimit = 3000
-  const maxPhotoSize = 5 * 1024 * 1024 // 5MB
+  const maxPhotoSize = 5 * 1024 * 1024
   const allowedPhotoTypes = ['image/jpeg', 'image/png', 'image/webp']
 
-  // Fetch user's children
   useEffect(() => {
     const fetchChildren = async () => {
       const { data: { session } } = await supabase.auth.getSession()
@@ -63,38 +74,32 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
     if (!files) return
 
     setPhotoUploadError('')
-    const newPhotos: UploadedPhoto[] = []
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i]
 
-      // Validate file type
       if (!allowedPhotoTypes.includes(file.type)) {
         setPhotoUploadError('Only JPEG, PNG, and WebP files are allowed')
         continue
       }
 
-      // Validate file size
       if (file.size > maxPhotoSize) {
         setPhotoUploadError('Each photo must be under 5MB')
         continue
       }
 
-      // Create preview
       const reader = new FileReader()
       reader.onload = (event) => {
         if (event.target?.result) {
-          newPhotos.push({
+          setUploadedPhotos(prev => [...prev, {
             file,
-            preview: event.target.result as string
-          })
-          setUploadedPhotos(prev => [...prev, newPhotos[newPhotos.length - 1]])
+            preview: event.target!.result as string
+          }])
         }
       }
       reader.readAsDataURL(file)
     }
 
-    // Reset file input
     e.target.value = ''
   }
 
@@ -117,7 +122,6 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
         canvas.toBlob(
           (blob) => {
             if (!blob) { resolve(file); return }
-            // Keep original name but mark as jpeg
             const compressed = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' })
             resolve(compressed.size < file.size ? compressed : file)
           },
@@ -130,7 +134,7 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
     })
   }
 
-  const uploadPhotosToStorage = async (entryId: string, userId: string): Promise<string[]> => {
+  const uploadPhotos = async (entryId: string, userId: string): Promise<void> => {
     const uploadOne = async (photo: UploadedPhoto): Promise<string> => {
       const compressed = await compressImage(photo.file)
       const fileExt = compressed.name.split('.').pop()?.toLowerCase() || 'jpg'
@@ -139,26 +143,36 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
 
       const { error: uploadError } = await supabase.storage
         .from('entries')
-        .upload(storagePath, compressed, {
-          cacheControl: '3600',
-          upsert: false
-        })
+        .upload(storagePath, compressed, { cacheControl: '3600', upsert: false })
 
       if (uploadError) {
-        throw new Error(`Failed to upload photo ${photo.file.name}: ${uploadError.message}`)
+        throw new Error(`Failed to upload ${photo.file.name}: ${uploadError.message}`)
       }
 
       return storagePath
     }
 
-    // Upload all photos in parallel
     const storagePaths = await Promise.all(uploadedPhotos.map(uploadOne))
-    return storagePaths
+
+    const photoMetadata = storagePaths.map((path, idx) => ({
+      entry_id: entryId,
+      storage_path: path,
+      original_filename: uploadedPhotos[idx].file.name,
+      file_size_bytes: uploadedPhotos[idx].file.size
+    }))
+
+    const { error: photoError } = await supabase
+      .from('entry_photos')
+      .insert(photoMetadata)
+
+    if (photoError) {
+      console.warn('Failed to insert photo metadata:', photoError)
+    }
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    
+
     if (!text.trim()) {
       setError('Entry text cannot be empty')
       return
@@ -169,7 +183,6 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
       return
     }
 
-    // Validate date is not in the future
     const selectedDateTime = new Date(entryDate + 'T00:00:00').getTime()
     const todayDateTime = new Date().setHours(0, 0, 0, 0)
     if (selectedDateTime > todayDateTime) {
@@ -177,105 +190,89 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
       return
     }
 
-    setLoading(true)
+    setSubmitting(true)
     setError('')
 
-    try {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session?.user) {
-        setError('Not authenticated')
-        setLoading(false)
-        return
-      }
-      const user = session.user
+    const { data: { session } } = await supabase.auth.getSession()
+    if (!session?.user) {
+      setError('Not authenticated')
+      setSubmitting(false)
+      return
+    }
+    const user = session.user
 
-      // Insert entry
+    // Build the selected child profiles for the optimistic entry
+    const selectedChildProfiles = children.filter(c => selectedChildren.includes(c.id))
+
+    // Generate a temp ID for the optimistic entry
+    const tempId = `optimistic-${Date.now()}`
+    const now = new Date().toISOString()
+
+    // Fire optimistic update immediately - entry appears in feed at once
+    onOptimisticAdd({
+      id: tempId,
+      text: text.trim(),
+      entry_date: entryDate,
+      created_at: now,
+      children: selectedChildProfiles,
+      photos: [],
+      _optimistic: true,
+      _photoCount: uploadedPhotos.length
+    })
+
+    // Reset form
+    const capturedText = text.trim()
+    const capturedDate = entryDate
+    const capturedChildren = [...selectedChildren]
+    const capturedPhotos = [...uploadedPhotos]
+    setText('')
+    setEntryDate(new Date().toISOString().split('T')[0])
+    setSelectedChildren([])
+    setUploadedPhotos([])
+
+    // Save to server in background
+    try {
       const { data: entryData, error: entryError } = await supabase
         .from('entries')
-        .insert({
-          user_id: user.id,
-          text: text.trim(),
-          entry_date: entryDate
-        })
+        .insert({ user_id: user.id, text: capturedText, entry_date: capturedDate })
         .select()
 
-      if (entryError) {
-        setError(`Failed to create entry: ${entryError.message}`)
-        setLoading(false)
+      if (entryError || !entryData?.[0]?.id) {
+        onFailed(tempId, `Failed to save entry: ${entryError?.message ?? 'Unknown error'}`)
+        setSubmitting(false)
         return
       }
 
-      const entryId = entryData?.[0]?.id
-      if (!entryId) {
-        setError('Entry created but ID missing')
-        setLoading(false)
-        return
-      }
+      const entryId = entryData[0].id
 
-      // Upload photos and store metadata
-      if (uploadedPhotos.length > 0) {
-        try {
-          const storagePaths = await uploadPhotosToStorage(entryId, user.id)
-
-          // Insert photo metadata
-          const photoMetadata = storagePaths.map(path => ({
-            entry_id: entryId,
-            storage_path: path,
-            original_filename: uploadedPhotos[storagePaths.indexOf(path)].file.name,
-            file_size_bytes: uploadedPhotos[storagePaths.indexOf(path)].file.size
-          }))
-
-          const { error: photoError } = await supabase
-            .from('entry_photos')
-            .insert(photoMetadata)
-
-          if (photoError) {
-            // Note: photos are already in storage. Log but don't fail the entry.
-            console.warn('Failed to insert photo metadata:', photoError)
-          }
-        } catch (photoUploadErr) {
-          // Surface the actual error so we can diagnose it
-          const errMsg = photoUploadErr instanceof Error ? photoUploadErr.message : String(photoUploadErr)
-          setError(`Entry created but photo upload failed: ${errMsg}`)
-          setLoading(false)
-          return
-        }
-      }
-
-      // Insert child tags if any selected
-      if (selectedChildren.length > 0) {
-        const childTagInserts = selectedChildren.map(childId => ({
-          entry_id: entryId,
-          child_id: childId
-        }))
-
+      // Tag children
+      if (capturedChildren.length > 0) {
         const { error: childTagError } = await supabase
           .from('entry_children')
-          .insert(childTagInserts)
+          .insert(capturedChildren.map(childId => ({ entry_id: entryId, child_id: childId })))
 
         if (childTagError) {
-          // Rollback: delete the entry if child insert fails
-          await supabase
-            .from('entries')
-            .delete()
-            .eq('id', entryId)
-
-          setError(`Failed to tag children: ${childTagError.message}`)
-          setLoading(false)
+          // Rollback entry
+          await supabase.from('entries').delete().eq('id', entryId)
+          onFailed(tempId, `Failed to tag children: ${childTagError.message}`)
+          setSubmitting(false)
           return
         }
       }
 
-      // Success
-      setText('')
-      setEntryDate(new Date().toISOString().split('T')[0])
-      setSelectedChildren([])
-      setUploadedPhotos([])
+      // Upload photos in background - don't block onSuccess
+      if (capturedPhotos.length > 0) {
+        uploadPhotos(entryId, user.id).catch(err => {
+          console.warn('Photo upload failed after entry saved:', err)
+        })
+      }
+
+      // Trigger feed refresh to replace optimistic entry with real data
       onSuccess()
     } catch (err) {
-      setError(`Unexpected error: ${String(err)}`)
+      onFailed(tempId, `Unexpected error: ${String(err)}`)
     } finally {
-      setLoading(false)
+      setSubmitting(false)
     }
   }
 
@@ -295,7 +292,6 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
         </div>
       )}
 
-      {/* Text Input */}
       <div className="mb-6">
         <label htmlFor="text" className="block text-sm font-medium text-gray-700 mb-2">
           What&apos;s on your mind?
@@ -314,7 +310,6 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
         </div>
       </div>
 
-      {/* Date Input */}
       <div className="mb-6">
         <label htmlFor="entryDate" className="block text-sm font-medium text-gray-700 mb-2">
           Entry Date
@@ -329,7 +324,6 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
         />
       </div>
 
-      {/* Photo Upload */}
       <div className="mb-6">
         <label htmlFor="photos" className="block text-sm font-medium text-gray-700 mb-2">
           Add photos (optional)
@@ -353,7 +347,6 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
         )}
       </div>
 
-      {/* Photo Previews */}
       {uploadedPhotos.length > 0 && (
         <div className="mb-6">
           <p className="text-sm font-medium text-gray-700 mb-3">
@@ -380,7 +373,6 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
         </div>
       )}
 
-      {/* Child Tag Selector */}
       <div className="mb-6">
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Tag children (optional)
@@ -411,7 +403,6 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
         )}
       </div>
 
-      {/* Action Buttons */}
       <div className="flex gap-3 justify-end">
         <button
           type="button"
@@ -422,10 +413,10 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
         </button>
         <button
           type="submit"
-          disabled={loading}
+          disabled={submitting}
           className="px-6 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-xl font-medium transition-colors"
         >
-          {loading ? 'Creating...' : 'Create Entry'}
+          {submitting ? 'Saving...' : 'Create Entry'}
         </button>
       </div>
     </form>

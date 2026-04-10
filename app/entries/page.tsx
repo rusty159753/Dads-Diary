@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@/lib/supabase/client'
 import EntryForm from '@/components/EntryForm'
@@ -23,6 +23,8 @@ interface EntryWithChildren {
   created_at: string
   children: ChildProfile[]
   photos: PhotoMetadata[]
+  _optimistic?: true
+  _photoCount?: number
 }
 
 export default function Entries() {
@@ -34,7 +36,6 @@ export default function Entries() {
   const [authenticated, setAuthenticated] = useState(false)
   const supabase = createClient()
 
-  // Check auth on mount
   useEffect(() => {
     const checkAuth = async () => {
       const { data: { user } } = await supabase.auth.getUser()
@@ -47,20 +48,17 @@ export default function Entries() {
     checkAuth()
   }, [router])
 
-  const fetchEntries = async () => {
-    setLoading(true)
+  const fetchEntries = useCallback(async () => {
     setError('')
 
     try {
       const { data: { session } } = await supabase.auth.getSession()
       if (!session?.user) {
         setError('Not authenticated')
-        setLoading(false)
         return
       }
       const user = session.user
 
-      // Fetch entries with their tagged children
       const { data: entriesData, error: entriesError } = await supabase
         .from('entries')
         .select('id, text, entry_date, created_at')
@@ -70,11 +68,9 @@ export default function Entries() {
 
       if (entriesError) {
         setError(`Failed to load entries: ${entriesError.message}`)
-        setLoading(false)
         return
       }
 
-      // Batch fetch all child tags and photos in two queries instead of N+1 loops
       const entryIds = (entriesData || []).map(e => e.id)
 
       const [childTagResult, photoResult] = await Promise.all([
@@ -92,17 +88,9 @@ export default function Entries() {
           : Promise.resolve({ data: [], error: null })
       ])
 
-      if (childTagResult.error) {
-        console.error('Failed to fetch child tags:', childTagResult.error)
-      }
-      if (photoResult.error) {
-        console.error('Failed to fetch photos:', photoResult.error)
-      }
-
-      // Index by entry_id for O(1) lookup
       const childrenByEntry: Record<string, ChildProfile[]> = {}
       for (const tag of (childTagResult.data || [])) {
-        const t = tag as { entry_id: string; childrenprofiles: ChildProfile[] }
+        const t = tag as { entry_id: string; childrenprofiles: ChildProfile | ChildProfile[] }
         if (!childrenByEntry[t.entry_id]) childrenByEntry[t.entry_id] = []
         if (t.childrenprofiles) {
           const cp = Array.isArray(t.childrenprofiles) ? t.childrenprofiles : [t.childrenprofiles]
@@ -117,29 +105,38 @@ export default function Entries() {
         photosByEntry[p.entry_id].push({ id: p.id, storage_path: p.storage_path })
       }
 
-      const entriesWithChildren: EntryWithChildren[] = (entriesData || []).map(entry => ({
+      const confirmed: EntryWithChildren[] = (entriesData || []).map(entry => ({
         ...entry,
         children: childrenByEntry[entry.id] || [],
         photos: photosByEntry[entry.id] || []
       }))
 
-      setEntries(entriesWithChildren)
+      setEntries(confirmed)
     } catch (err) {
       setError(`Unexpected error: ${String(err)}`)
     } finally {
       setLoading(false)
     }
-  }
+  }, [supabase])
 
   useEffect(() => {
     if (authenticated) {
       fetchEntries()
     }
-  }, [authenticated])
+  }, [authenticated, fetchEntries])
+
+  const handleOptimisticAdd = (optimisticEntry: EntryWithChildren) => {
+    setShowForm(false)
+    setEntries(prev => [optimisticEntry, ...prev])
+  }
 
   const handleEntryCreated = () => {
-    setShowForm(false)
     fetchEntries()
+  }
+
+  const handleEntryFailed = (tempId: string, message: string) => {
+    setEntries(prev => prev.filter(e => e.id !== tempId))
+    setError(message)
   }
 
   const formatDate = (dateStr: string) => {
@@ -178,7 +175,9 @@ export default function Entries() {
         {showForm && (
           <div className="mb-8">
             <EntryForm
+              onOptimisticAdd={handleOptimisticAdd}
               onSuccess={handleEntryCreated}
+              onFailed={handleEntryFailed}
               onCancel={() => setShowForm(false)}
             />
           </div>
@@ -209,7 +208,11 @@ export default function Entries() {
             {entries.map((entry) => (
               <div
                 key={entry.id}
-                className="bg-white border border-gray-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-shadow duration-300"
+                className={`bg-white border rounded-2xl p-6 shadow-sm transition-all duration-300 ${
+                  entry._optimistic
+                    ? 'border-blue-200 opacity-75'
+                    : 'border-gray-200 hover:shadow-md'
+                }`}
               >
                 <div className="flex items-start justify-between mb-3">
                   <div>
@@ -220,22 +223,26 @@ export default function Entries() {
                       Created {new Date(entry.created_at).toLocaleDateString()}
                     </p>
                   </div>
-                  <a
-                    href={`/entries/${entry.id}`}
-                    className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
-                  >
-                    View
-                  </a>
+                  {entry._optimistic ? (
+                    <span className="text-xs text-blue-500 font-medium">Saving...</span>
+                  ) : (
+                    <a
+                      href={`/entries/${entry.id}`}
+                      className="text-blue-600 hover:text-blue-700 text-sm font-medium transition-colors"
+                    >
+                      View
+                    </a>
+                  )}
                 </div>
 
                 <p className="text-gray-900 mb-3 leading-relaxed">
                   {truncateText(entry.text)}
                 </p>
 
-                {/* Photo count indicator */}
-                {entry.photos.length > 0 && (
+                {(entry._photoCount ?? entry.photos.length) > 0 && (
                   <p className="text-xs text-gray-500 mb-3">
-                    📷 {entry.photos.length} photo{entry.photos.length !== 1 ? 's' : ''}
+                    📷 {entry._photoCount ?? entry.photos.length} photo{(entry._photoCount ?? entry.photos.length) !== 1 ? 's' : ''}
+                    {entry._optimistic && entry._photoCount ? ' (uploading...)' : ''}
                   </p>
                 )}
 
