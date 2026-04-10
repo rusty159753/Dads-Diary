@@ -102,20 +102,48 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
     setUploadedPhotos(prev => prev.filter((_, i) => i !== index))
   }
 
+  const compressImage = (file: File, maxWidthPx = 1920, qualityJpeg = 0.82): Promise<File> => {
+    return new Promise((resolve) => {
+      const img = new Image()
+      const url = URL.createObjectURL(file)
+      img.onload = () => {
+        URL.revokeObjectURL(url)
+        const scale = Math.min(1, maxWidthPx / img.width)
+        const canvas = document.createElement('canvas')
+        canvas.width = Math.round(img.width * scale)
+        canvas.height = Math.round(img.height * scale)
+        const ctx = canvas.getContext('2d')!
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+        canvas.toBlob(
+          (blob) => {
+            if (!blob) { resolve(file); return }
+            // Keep original name but mark as jpeg
+            const compressed = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' })
+            resolve(compressed.size < file.size ? compressed : file)
+          },
+          'image/jpeg',
+          qualityJpeg
+        )
+      }
+      img.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
+      img.src = url
+    })
+  }
+
   const uploadPhotosToStorage = async (entryId: string, userId: string): Promise<string[]> => {
     // uploadedPhotos are in memory with previews. Need to upload to Supabase Storage
     // and get back the storage paths for entry_photos metadata insertion
     const storagePaths: string[] = []
 
-    for (const photo of uploadedPhotos) {
-      const fileExt = photo.file.name.split('.').pop()?.toLowerCase() || 'jpg'
+    const uploadOne = async (photo: UploadedPhoto): Promise<string> => {
+      const compressed = await compressImage(photo.file)
+      const fileExt = compressed.name.split('.').pop()?.toLowerCase() || 'jpg'
       const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 9)}.${fileExt}`
       const storagePath = `users/${userId}/entries/${entryId}/${fileName}`
 
-      // Upload to storage
       const { error: uploadError } = await supabase.storage
-        .from('entries') // bucket name: entries
-        .upload(storagePath, photo.file, {
+        .from('entries')
+        .upload(storagePath, compressed, {
           cacheControl: '3600',
           upsert: false
         })
@@ -124,9 +152,11 @@ export default function EntryForm({ onSuccess, onCancel }: EntryFormProps) {
         throw new Error(`Failed to upload photo ${photo.file.name}: ${uploadError.message}`)
       }
 
-      storagePaths.push(storagePath)
+      return storagePath
     }
 
+    // Upload all photos in parallel
+    const storagePaths = await Promise.all(uploadedPhotos.map(uploadOne))
     return storagePaths
   }
 
