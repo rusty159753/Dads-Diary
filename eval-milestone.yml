@@ -1,0 +1,108 @@
+# Tier 2 Milestone Gate - runs manually at milestone close
+# Combines Tier 1 checks with deeper automated checks.
+# Trigger manually via GitHub Actions workflow_dispatch.
+# Do not run this against production without EVAL_ALLOW_PRODUCTION=true explicitly set.
+
+name: Eval - Milestone Gate (Tier 2)
+
+on:
+  workflow_dispatch:
+    inputs:
+      milestone:
+        description: "Milestone being closed (e.g. M3, M4, M5, M6)"
+        required: true
+        type: choice
+        options:
+          - M3
+          - M4
+          - M5
+          - M6
+      eval_allow_production:
+        description: "Allow run against production Supabase (requires explicit approval)"
+        required: true
+        type: boolean
+        default: false
+
+env:
+  SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+  TEST_USER_ID: ${{ secrets.TEST_USER_ID }}
+  TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+  TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
+  EVAL_ALLOW_PRODUCTION: ${{ inputs.eval_allow_production }}
+  TARGET_MILESTONE: ${{ inputs.milestone }}
+
+jobs:
+  tier-2-gate:
+    name: Tier 2 Milestone Gate - ${{ inputs.milestone }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Guard - refuse production Supabase URL
+        run: |
+          if [[ "$SUPABASE_URL" == *"yagoticnplkqfzitjqge"* ]] && [[ "$EVAL_ALLOW_PRODUCTION" != "true" ]]; then
+            echo "ERROR: Eval suite is pointed at the production Supabase project."
+            echo "EVAL_ALLOW_PRODUCTION must be explicitly set to true to proceed."
+            exit 1
+          fi
+
+      - name: Setup - Run test user fixtures
+        run: |
+          npx ts-node evals/fixtures/test-user-setup.sql
+
+      - name: Category A - Security and Access Control
+        run: npx vitest run evals/automated/security --reporter=verbose
+
+      - name: Category B - Data Integrity
+        run: npx vitest run evals/automated/data-integrity --reporter=verbose
+
+      - name: Category C - Functional Smoke
+        run: npx vitest run evals/automated/functional --reporter=verbose
+
+      - name: Category D - Performance
+        run: npx vitest run evals/automated/performance --reporter=verbose
+
+      - name: Category E - Mobile Viewport Compliance
+        run: npx vitest run evals/automated/mobile --reporter=verbose
+
+      - name: Category F - Milestone Behavior
+        run: npx vitest run evals/automated/milestone-${{ env.TARGET_MILESTONE_LOWER }} --reporter=verbose
+        env:
+          TARGET_MILESTONE_LOWER: ${{ fromJSON('{"M3":"m3","M4":"m4","M5":"m5","M6":"m6"}')[inputs.milestone] }}
+
+      - name: SQL Audit - RLS Coverage
+        run: npx ts-node evals/sql/rls-coverage.sql
+
+      - name: SQL Audit - Orphan Entries
+        run: npx ts-node evals/sql/orphan-entries.sql
+
+      - name: SQL Audit - Index Presence
+        run: npx ts-node evals/sql/index-presence.sql
+
+      - name: SQL Audit - Service Role Key in Bundle
+        run: npx ts-node evals/sql/service-role-in-bundle.sql
+
+      - name: Teardown - Run test user cleanup
+        if: always()
+        run: |
+          npx ts-node evals/fixtures/test-user-cleanup.sql
+
+      - name: Output - Print milestone gate summary
+        if: always()
+        run: |
+          echo "Milestone: ${{ inputs.milestone }}"
+          echo "Run completed at: $(date -u)"
+          echo "Review results above. File milestone report manually per eval framework README."
