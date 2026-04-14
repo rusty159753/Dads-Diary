@@ -109,6 +109,9 @@ export default function EntryForm({ onOptimisticAdd, onSuccess, onFailed, onCanc
 
   const compressImage = (file: File, maxWidthPx = 1200, qualityJpeg = 0.75): Promise<File> => {
     return new Promise((resolve) => {
+      const isPng = file.type === 'image/png'
+      const outputMime = isPng ? 'image/png' : 'image/jpeg'
+      const outputExt = isPng ? 'png' : 'jpg'
       const img = new Image()
       const url = URL.createObjectURL(file)
       img.onload = () => {
@@ -122,11 +125,11 @@ export default function EntryForm({ onOptimisticAdd, onSuccess, onFailed, onCanc
         canvas.toBlob(
           (blob) => {
             if (!blob) { resolve(file); return }
-            const compressed = new File([blob], file.name.replace(/\.[^.]+$/, '.jpg'), { type: 'image/jpeg' })
+            const compressed = new File([blob], file.name.replace(/\.[^.]+$/, `.${outputExt}`), { type: outputMime })
             resolve(compressed.size < file.size ? compressed : file)
           },
-          'image/jpeg',
-          qualityJpeg
+          outputMime,
+          isPng ? undefined : qualityJpeg
         )
       }
       img.onerror = () => { URL.revokeObjectURL(url); resolve(file) }
