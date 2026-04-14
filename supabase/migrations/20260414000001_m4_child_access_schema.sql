@@ -99,3 +99,36 @@ CREATE POLICY "Child can read released entries"
     )
     AND deleted_at IS NULL
   );
+
+-- Fix: infinite recursion in releases INSERT policy
+-- The original INSERT policy checked entries table which has a child RLS policy
+-- that queries releases, creating a loop. Replaced with a SECURITY DEFINER function.
+
+CREATE OR REPLACE FUNCTION check_entry_owned_by_user(p_entry_id UUID, p_user_id UUID)
+RETURNS BOOLEAN
+LANGUAGE sql
+SECURITY DEFINER
+SET search_path = public
+AS $$
+  SELECT EXISTS (
+    SELECT 1 FROM entries
+    WHERE id = p_entry_id
+      AND user_id = p_user_id
+      AND deleted_at IS NULL
+  );
+$$;
+
+DROP POLICY "Dad can create releases for own entries and children" ON releases;
+
+CREATE POLICY "Dad can create releases for own entries and children"
+  ON releases FOR INSERT
+  TO authenticated
+  WITH CHECK (
+    dad_id = auth.uid()
+    AND check_entry_owned_by_user(entry_id, auth.uid())
+    AND EXISTS (
+      SELECT 1 FROM childrenprofiles
+      WHERE childrenprofiles.id = child_id
+        AND childrenprofiles.user_id = auth.uid()
+    )
+  );
