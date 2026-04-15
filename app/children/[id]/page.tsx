@@ -17,6 +17,20 @@ interface Entry {
   created_at: string
 }
 
+interface AccessCode {
+  id: string
+  code: string
+  used_at: string | null
+  expires_at: string
+  created_at: string
+}
+
+function generateCode(): string {
+  // 8-character alphanumeric code, uppercase, no ambiguous chars (0/O, 1/I/L)
+  const chars = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789'
+  return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join('')
+}
+
 export default function ChildProfilePage() {
   const router = useRouter()
   const params = useParams()
@@ -27,63 +41,70 @@ export default function ChildProfilePage() {
   const [entries, setEntries] = useState<Entry[]>([])
   const [releasedIds, setReleasedIds] = useState<Set<string>>(new Set())
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [existingCode, setExistingCode] = useState<AccessCode | null>(null)
+  const [childAccount, setChildAccount] = useState<{ created_at: string } | null>(null)
   const [loading, setLoading] = useState(true)
   const [releasing, setReleasing] = useState(false)
+  const [generatingCode, setGeneratingCode] = useState(false)
   const [error, setError] = useState('')
   const [successMessage, setSuccessMessage] = useState('')
 
-  useEffect(() => {
-    const load = async () => {
-      const { data: { user } } = await supabase.auth.getUser()
-      if (!user) { router.push('/auth'); return }
+  const loadData = async () => {
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { router.push('/auth'); return }
 
-      // Load child profile - confirms ownership via user_id
-      const { data: childData, error: childError } = await supabase
-        .from('childrenprofiles')
-        .select('id, name, birthdate')
-        .eq('id', childId)
-        .eq('user_id', user.id)
-        .single()
+    const { data: childData, error: childError } = await supabase
+      .from('childrenprofiles')
+      .select('id, name, birthdate')
+      .eq('id', childId)
+      .eq('user_id', user.id)
+      .single()
 
-      if (childError || !childData) {
-        router.push('/children')
-        return
-      }
-      setChild(childData)
+    if (childError || !childData) { router.push('/children'); return }
+    setChild(childData)
 
-      // Load all dad's non-deleted entries
-      const { data: entriesData, error: entriesError } = await supabase
-        .from('entries')
-        .select('id, text, entry_date, created_at')
-        .eq('user_id', user.id)
-        .is('deleted_at', null)
-        .order('entry_date', { ascending: false })
+    const { data: entriesData } = await supabase
+      .from('entries')
+      .select('id, text, entry_date, created_at')
+      .eq('user_id', user.id)
+      .is('deleted_at', null)
+      .order('entry_date', { ascending: false })
+    setEntries(entriesData || [])
 
-      if (entriesError) {
-        setError('Failed to load entries.')
-        setLoading(false)
-        return
-      }
-      setEntries(entriesData || [])
+    const { data: releasesData } = await supabase
+      .from('releases')
+      .select('entry_id')
+      .eq('child_id', childId)
+      .eq('dad_id', user.id)
+    if (releasesData) setReleasedIds(new Set(releasesData.map(r => r.entry_id)))
 
-      // Load already-released entry IDs for this child
-      const { data: releasesData, error: releasesError } = await supabase
-        .from('releases')
-        .select('entry_id')
-        .eq('child_id', childId)
-        .eq('dad_id', user.id)
+    // Check for existing unused non-expired access code
+    const { data: codeData } = await supabase
+      .from('child_access_codes')
+      .select('id, code, used_at, expires_at, created_at')
+      .eq('child_profile_id', childId)
+      .eq('dad_id', user.id)
+      .is('used_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
+    if (codeData) setExistingCode(codeData)
 
-      if (!releasesError && releasesData) {
-        setReleasedIds(new Set(releasesData.map(r => r.entry_id)))
-      }
+    // Check if child already has a registered account
+    const { data: accountData } = await supabase
+      .from('child_accounts')
+      .select('created_at')
+      .eq('child_profile_id', childId)
+      .maybeSingle()
+    if (accountData) setChildAccount(accountData)
 
-      setLoading(false)
-    }
-    load()
-  }, [childId, router])
+    setLoading(false)
+  }
+
+  useEffect(() => { loadData() }, [childId])
 
   const toggleEntry = (entryId: string) => {
-    // Cannot deselect already-released entries - releases are permanent
     if (releasedIds.has(entryId)) return
     setSelectedIds(prev => {
       const next = new Set(prev)
@@ -108,28 +129,43 @@ export default function ChildProfilePage() {
       is_test: false,
     }))
 
-    const { error: releaseError } = await supabase
-      .from('releases')
-      .insert(rows)
+    const { error: releaseError } = await supabase.from('releases').insert(rows)
+    if (releaseError) { setError('Release failed: ' + releaseError.message); setReleasing(false); return }
 
-    if (releaseError) {
-      setError('Release failed: ' + releaseError.message)
-      setReleasing(false)
-      return
-    }
-
-    // Update local state
     setReleasedIds(prev => new Set([...prev, ...selectedIds]))
     setSelectedIds(new Set())
     setSuccessMessage(`${rows.length} ${rows.length === 1 ? 'entry' : 'entries'} released to ${child?.name}.`)
     setReleasing(false)
   }
 
-  const formatDate = (dateStr: string) => {
-    return new Date(dateStr).toLocaleDateString('en-US', {
-      year: 'numeric', month: 'long', day: 'numeric'
-    })
+  const handleGenerateCode = async () => {
+    setGeneratingCode(true)
+    setError('')
+
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) { setError('Not authenticated.'); setGeneratingCode(false); return }
+
+    const code = generateCode()
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+
+    const { data, error: insertError } = await supabase
+      .from('child_access_codes')
+      .insert({ dad_id: user.id, child_profile_id: childId, code, expires_at: expiresAt })
+      .select('id, code, used_at, expires_at, created_at')
+      .single()
+
+    if (insertError || !data) { setError('Failed to generate invite code.'); setGeneratingCode(false); return }
+    setExistingCode(data)
+    setGeneratingCode(false)
   }
+
+  const registrationLink = (code: string) => {
+    const base = typeof window !== 'undefined' ? window.location.origin : ''
+    return `${base}/child-register?code=${code}`
+  }
+
+  const formatDate = (dateStr: string) =>
+    new Date(dateStr).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })
 
   const truncate = (text: string, maxLen = 80) =>
     text.length > maxLen ? text.slice(0, maxLen) + '...' : text
@@ -173,24 +209,72 @@ export default function ChildProfilePage() {
           </div>
         </div>
 
-        {/* Errors and success */}
         {error && (
-          <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm mb-4">
-            {error}
-          </div>
+          <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm mb-4">{error}</div>
         )}
         {successMessage && (
-          <div className="p-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm mb-4">
-            {successMessage}
-          </div>
+          <div className="p-3 bg-green-50 border border-green-200 text-green-700 rounded-xl text-sm mb-4">{successMessage}</div>
         )}
 
-        {/* Release button */}
+        {/* Child access / invite section */}
+        <div className="bg-white border border-gray-200 rounded-2xl p-5 mb-6">
+          <h2 className="text-sm font-semibold text-gray-700 mb-3">Child Access</h2>
+          {childAccount ? (
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" />
+              <p className="text-sm text-gray-700">
+                {child.name} has a registered account. Account created {formatDate(childAccount.created_at)}.
+              </p>
+            </div>
+          ) : existingCode ? (
+            <div>
+              <p className="text-sm text-gray-600 mb-3">
+                Share this registration link with {child.name}. It expires {formatDate(existingCode.expires_at)}.
+              </p>
+              <div className="bg-gray-50 border border-gray-200 rounded-xl p-3 mb-3">
+                <p className="text-xs text-gray-500 mb-1">Registration link</p>
+                <p className="text-sm text-blue-700 break-all font-mono">{registrationLink(existingCode.code)}</p>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => navigator.clipboard.writeText(registrationLink(existingCode.code))}
+                  className="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl transition-colors"
+                >
+                  Copy link
+                </button>
+                <button
+                  onClick={handleGenerateCode}
+                  disabled={generatingCode}
+                  className="text-sm text-gray-500 hover:text-gray-700 px-4 py-2 transition-colors"
+                >
+                  Generate new link
+                </button>
+              </div>
+              <p className="text-xs text-gray-400 mt-2">
+                Note: email delivery is not yet configured. Copy and send this link manually.
+              </p>
+            </div>
+          ) : (
+            <div>
+              <p className="text-sm text-gray-600 mb-3">
+                Generate a registration link to send to {child.name}. They will use it to create their account and access released entries.
+              </p>
+              <button
+                onClick={handleGenerateCode}
+                disabled={generatingCode}
+                className="text-sm bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white px-4 py-2 rounded-xl transition-colors"
+              >
+                {generatingCode ? 'Generating...' : 'Generate invite link'}
+              </button>
+            </div>
+          )}
+        </div>
+
+        {/* Release confirmation bar */}
         {newlySelected > 0 && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4 mb-6 flex items-center justify-between">
             <p className="text-sm text-blue-800">
-              Release {newlySelected} {newlySelected === 1 ? 'entry' : 'entries'} to {child.name}?
-              Once released, this cannot be undone.
+              Release {newlySelected} {newlySelected === 1 ? 'entry' : 'entries'} to {child.name}? Once released, this cannot be undone.
             </p>
             <button
               onClick={handleRelease}
@@ -205,7 +289,7 @@ export default function ChildProfilePage() {
         {/* Entry list */}
         {entries.length === 0 ? (
           <div className="text-center py-12">
-            <p className="text-gray-500">No entries yet. Write some entries first.</p>
+            <p className="text-gray-500">No entries yet.</p>
             <button
               onClick={() => router.push('/entries')}
               className="mt-4 text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl transition-colors"
@@ -218,45 +302,29 @@ export default function ChildProfilePage() {
             {entries.map((entry) => {
               const isReleased = releasedIds.has(entry.id)
               const isSelected = selectedIds.has(entry.id)
-
               return (
                 <li
                   key={entry.id}
                   onClick={() => toggleEntry(entry.id)}
-                  className={`
-                    rounded-xl border px-5 py-4 flex items-start gap-4 transition-colors
-                    ${isReleased
-                      ? 'bg-green-50 border-green-200 cursor-default'
-                      : isSelected
-                        ? 'bg-blue-50 border-blue-300 cursor-pointer'
-                        : 'bg-white border-gray-200 cursor-pointer hover:border-blue-200'
-                    }
-                  `}
+                  className={`rounded-xl border px-5 py-4 flex items-start gap-4 transition-colors
+                    ${isReleased ? 'bg-green-50 border-green-200 cursor-default'
+                      : isSelected ? 'bg-blue-50 border-blue-300 cursor-pointer'
+                      : 'bg-white border-gray-200 cursor-pointer hover:border-blue-200'}`}
                 >
-                  {/* Checkbox */}
-                  <div className={`
-                    mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors
-                    ${isReleased
-                      ? 'bg-green-500 border-green-500'
-                      : isSelected
-                        ? 'bg-blue-600 border-blue-600'
-                        : 'border-gray-300'
-                    }
-                  `}>
+                  <div className={`mt-0.5 w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 transition-colors
+                    ${isReleased ? 'bg-green-500 border-green-500'
+                      : isSelected ? 'bg-blue-600 border-blue-600'
+                      : 'border-gray-300'}`}>
                     {(isReleased || isSelected) && (
                       <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
                         <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
                       </svg>
                     )}
                   </div>
-
-                  {/* Entry content */}
                   <div className="flex-1 min-w-0">
                     <p className="text-sm text-gray-500 mb-0.5">{formatDate(entry.entry_date)}</p>
                     <p className="text-gray-900 text-sm leading-relaxed">{truncate(entry.text)}</p>
-                    {isReleased && (
-                      <p className="text-xs text-green-600 font-medium mt-1">Released</p>
-                    )}
+                    {isReleased && <p className="text-xs text-green-600 font-medium mt-1">Released</p>}
                   </div>
                 </li>
               )
