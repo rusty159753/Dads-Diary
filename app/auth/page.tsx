@@ -36,7 +36,17 @@ export default function Auth() {
         if (authError) {
           setError(authError.message)
         } else if (data.user) {
-          router.push('/dashboard')
+          // Check if this user is a child account and route accordingly
+          const { data: childAccount } = await supabase
+            .from('child_accounts')
+            .select('id')
+            .eq('child_user_id', data.user.id)
+            .maybeSingle()
+          if (childAccount) {
+            router.push('/child-diary')
+          } else {
+            router.push('/dashboard')
+          }
           router.refresh()
         }
       }

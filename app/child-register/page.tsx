@@ -118,7 +118,7 @@ function ChildRegisterForm() {
     if (accountError) {
       if (accountError.message.includes('unique') || accountError.code === '23505') {
         setShowLoginPrompt(true)
-        setError('This child profile already has a registered account.')
+        setError('This diary has already been claimed by another account. Log in with the account used to register originally.')
       } else {
         setError('Account created but linking failed. Contact support.')
       }
