@@ -19,7 +19,7 @@ function ChildRegisterForm() {
   const [codeValid, setCodeValid] = useState<boolean | null>(null)
   const [childName, setChildName] = useState('')
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState(false)
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false)
 
   // Validate code on load if present in URL
   useEffect(() => {
@@ -86,8 +86,20 @@ function ChildRegisterForm() {
       password,
     })
 
-    if (signUpError || !authData.user) {
-      setError(signUpError?.message || 'Failed to create account.')
+    if (signUpError) {
+      if (signUpError.message.toLowerCase().includes('already registered') ||
+          signUpError.message.toLowerCase().includes('already exists')) {
+        setShowLoginPrompt(true)
+        setError('An account with this email already exists.')
+      } else {
+        setError(signUpError.message)
+      }
+      setLoading(false)
+      return
+    }
+
+    if (!authData.user) {
+      setError('Failed to create account.')
       setLoading(false)
       return
     }
@@ -104,7 +116,12 @@ function ChildRegisterForm() {
       })
 
     if (accountError) {
-      setError('Account created but linking failed. Contact support.')
+      if (accountError.message.includes('unique') || accountError.code === '23505') {
+        setShowLoginPrompt(true)
+        setError('This child profile already has a registered account.')
+      } else {
+        setError('Account created but linking failed. Contact support.')
+      }
       setLoading(false)
       return
     }
@@ -128,7 +145,17 @@ function ChildRegisterForm() {
       )}
 
       {error && (
-        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm mb-4">{error}</div>
+        <div className="p-3 bg-red-50 border border-red-200 text-red-700 rounded-xl text-sm mb-4">
+          {error}
+          {showLoginPrompt && (
+            <button
+              onClick={() => router.push("/auth")}
+              className="block mt-2 text-blue-600 hover:text-blue-700 font-medium underline"
+            >
+              Log in with existing account
+            </button>
+          )}
+        </div>
       )}
 
       <form onSubmit={handleSubmit} className="space-y-4">
