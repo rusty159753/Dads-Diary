@@ -9,6 +9,17 @@ export default async function Dashboard() {
     redirect('/auth')
   }
 
+  // Check if this user is a child account - route to child diary if so
+  const { data: childAccount } = await supabase
+    .from('child_accounts')
+    .select('id')
+    .eq('child_user_id', user.id)
+    .maybeSingle()
+
+  if (childAccount) {
+    redirect('/child-diary')
+  }
+
   const { data: children } = await supabase
     .from('childrenprofiles')
     .select('id, name, birthdate')
