@@ -49,6 +49,40 @@ export async function middleware(request: NextRequest) {
     return NextResponse.redirect(url)
   }
 
+  if (user) {
+    const pathname = request.nextUrl.pathname
+
+    // Dad-only routes - child accounts must not access these
+    const dadOnlyPaths = ['/entries', '/children', '/settings', '/onboarding']
+    const isDadOnly = dadOnlyPaths.some(p => pathname.startsWith(p))
+
+    // Child-only routes - dad accounts should not land here
+    const childOnlyPaths = ['/child-diary']
+    const isChildOnly = childOnlyPaths.some(p => pathname.startsWith(p))
+
+    if (isDadOnly || isChildOnly) {
+      const { data: childAccount } = await supabase
+        .from('child_accounts')
+        .select('child_user_id')
+        .eq('child_user_id', user.id)
+        .maybeSingle()
+
+      const isChild = !!childAccount
+
+      if (isChild && isDadOnly) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/child-diary'
+        return NextResponse.redirect(url)
+      }
+
+      if (!isChild && isChildOnly) {
+        const url = request.nextUrl.clone()
+        url.pathname = '/dashboard'
+        return NextResponse.redirect(url)
+      }
+    }
+  }
+
   return response
 }
 
