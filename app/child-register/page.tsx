@@ -135,9 +135,70 @@ function ChildRegisterForm() {
     router.push('/child-diary')
   }
 
+  const [mode, setMode] = useState<'register' | 'link'>('register')
+
+  const handleSignInAndLink = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError('')
+    setLoading(true)
+
+    // Re-validate code
+    const { data: codeData, error: codeError } = await supabase
+      .from('child_access_codes')
+      .select('id, child_profile_id, dad_id, used_at, expires_at')
+      .eq('code', codeInput.toUpperCase().trim())
+      .is('used_at', null)
+      .gt('expires_at', new Date().toISOString())
+      .maybeSingle()
+
+    if (codeError || !codeData) {
+      setError('Invite code is no longer valid. Ask your dad to generate a new one.')
+      setLoading(false)
+      return
+    }
+
+    // Sign in with existing credentials
+    const { data: authData, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
+    if (signInError || !authData.user) {
+      setError(signInError?.message || 'Login failed.')
+      setLoading(false)
+      return
+    }
+
+    // Link existing account to child profile
+    const { error: accountError } = await supabase
+      .from('child_accounts')
+      .insert({
+        child_user_id: authData.user.id,
+        child_profile_id: codeData.child_profile_id,
+        dad_id: codeData.dad_id,
+      })
+
+    if (accountError) {
+      if (accountError.message.includes('unique') || accountError.code === '23505') {
+        // Already linked - just route them through
+        router.push('/child-diary')
+        return
+      }
+      setError('Login succeeded but linking failed. Contact support.')
+      setLoading(false)
+      return
+    }
+
+    // Mark code as used
+    await supabase
+      .from('child_access_codes')
+      .update({ used_at: new Date().toISOString() })
+      .eq('id', codeData.id)
+
+    router.push('/child-diary')
+  }
+
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900 mb-2">Create your account</h1>
+      <h1 className="text-2xl font-bold text-gray-900 mb-2">
+        {mode === 'register' ? 'Create your account' : 'Link your existing account'}
+      </h1>
       {childName && (
         <p className="text-gray-600 mb-6">
           You have been invited to read diary entries shared with <strong>{childName}</strong>.
@@ -149,16 +210,16 @@ function ChildRegisterForm() {
           {error}
           {showLoginPrompt && (
             <button
-              onClick={() => router.push("/auth")}
+              onClick={() => { setMode('link'); setError(''); setShowLoginPrompt(false) }}
               className="block mt-2 text-blue-600 hover:text-blue-700 font-medium underline"
             >
-              Log in with existing account
+              Link my existing account instead
             </button>
           )}
         </div>
       )}
 
-      <form onSubmit={handleSubmit} className="space-y-4">
+      <form onSubmit={mode === 'register' ? handleSubmit : handleSignInAndLink} className="space-y-4">
         {!code && (
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Invite code</label>
@@ -203,26 +264,46 @@ function ChildRegisterForm() {
           />
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
-          <input
-            type="password"
-            value={confirmPassword}
-            onChange={(e) => setConfirmPassword(e.target.value)}
-            placeholder="Repeat your password"
-            className="w-full px-4 py-3 bg-white border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-gray-400 text-gray-900"
-            required
-            disabled={loading}
-          />
-        </div>
+        {mode === 'register' && (
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Confirm password</label>
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Repeat your password"
+              className="w-full px-4 py-3 bg-white border border-gray-300 rounded-2xl focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all placeholder-gray-400 text-gray-900"
+              required
+              disabled={loading}
+            />
+          </div>
+        )}
 
         <button
           type="submit"
           disabled={loading || codeValid === false || (!code && !codeInput)}
           className="w-full bg-blue-600 hover:bg-blue-700 disabled:opacity-50 text-white py-3 rounded-2xl font-semibold transition-colors"
         >
-          {loading ? 'Creating account...' : 'Create account'}
+          {loading
+            ? (mode === 'register' ? 'Creating account...' : 'Linking account...')
+            : (mode === 'register' ? 'Create account' : 'Log in and link account')}
         </button>
+
+        <p className="text-center text-sm text-gray-500">
+          {mode === 'register' ? (
+            <>Already have an account?{' '}
+              <button type="button" onClick={() => { setMode('link'); setError('') }} className="text-blue-600 hover:underline">
+                Link it instead
+              </button>
+            </>
+          ) : (
+            <>New here?{' '}
+              <button type="button" onClick={() => { setMode('register'); setError('') }} className="text-blue-600 hover:underline">
+                Create an account
+              </button>
+            </>
+          )}
+        </p>
       </form>
     </div>
   )
