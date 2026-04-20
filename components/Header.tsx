@@ -5,9 +5,10 @@ import { createClient } from '@/lib/supabase/client'
 
 interface HeaderProps {
   userEmail: string | null
+  isChild?: boolean
 }
 
-export default function Header({ userEmail }: HeaderProps) {
+export default function Header({ userEmail, isChild = false }: HeaderProps) {
   const router = useRouter()
   const supabase = createClient()
 
@@ -32,7 +33,7 @@ export default function Header({ userEmail }: HeaderProps) {
         </a>
         <a
           href="/settings/reminders"
-          className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block"
+          className={`text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block${isChild ? ' !hidden' : ''}`}
         >
           Reminders
         </a>
