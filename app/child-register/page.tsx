@@ -115,30 +115,7 @@ function ChildRegisterForm() {
       .update({ used_at: new Date().toISOString() })
       .eq('id', codeData.id)
 
-    setSuccess(true)
-    setLoading(false)
-  }
-
-  if (success) {
-    return (
-      <div className="text-center">
-        <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-          <svg className="w-6 h-6 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-          </svg>
-        </div>
-        <h2 className="text-xl font-bold text-gray-900 mb-2">Account created</h2>
-        <p className="text-gray-600 mb-6">
-          Your account is ready. You can now log in to read the diary entries shared with you.
-        </p>
-        <button
-          onClick={() => router.push('/auth')}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-semibold transition-colors"
-        >
-          Log in
-        </button>
-      </div>
-    )
+    router.push('/child-diary')
   }
 
   return (
