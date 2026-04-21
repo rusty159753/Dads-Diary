@@ -89,7 +89,7 @@ export default function ChildDiaryPage() {
   }, [router])
 
   const formatDate = (dateStr: string) =>
-    new Date(dateStr).toLocaleDateString('en-US', {
+    new Date(dateStr + 'T00:00:00').toLocaleDateString('en-US', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'
     })
 
