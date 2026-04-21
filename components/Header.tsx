@@ -37,6 +37,14 @@ export default function Header({ userEmail, isChild = false }: HeaderProps) {
         >
           Reminders
         </a>
+        {!isChild && (
+          <a
+            href="/entries/trash"
+            className="text-sm text-gray-600 hover:text-gray-900 transition-colors hidden sm:block"
+          >
+            Trash
+          </a>
+        )}
         <button
           onClick={handleLogout}
           className="text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-1.5 rounded-xl transition-colors"
