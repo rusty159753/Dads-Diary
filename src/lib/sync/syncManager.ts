@@ -1,4 +1,6 @@
-import { supabase } from '@/lib/supabase/client';
+import { createClient } from '@/lib/supabase/client';
+
+const supabase = createClient();
 import {
   type JournalEntry,
   type SyncStatus,
@@ -8,8 +10,8 @@ import {
   listPendingEntries,
   upsertEntry,
   purgeEntry,
-} from '@/lib/db/indexeddb';
-import { shouldPushLocal } from '@/lib/sync/conflict';
+} from '../db/indexeddb';
+import { shouldPushLocal } from './conflict';
 
 interface RemoteEntry {
   id: string;
