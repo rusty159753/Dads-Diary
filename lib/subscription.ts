@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+// Pure helper functions - no server imports, safe to use in client components
 
 export type SubscriptionStatus =
   | 'trialing'
@@ -18,34 +18,6 @@ export interface SubscriptionData {
   stripeSubscriptionId: string | null
 }
 
-export async function getSubscription(): Promise<SubscriptionData | null> {
-  const supabase = createClient()
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) return null
-
-  const { data } = await supabase
-    .from('subscriptions')
-    .select('*')
-    .eq('user_id', user.id)
-    .maybeSingle()
-
-  if (!data) return null
-
-  return {
-    status: data.status as SubscriptionStatus,
-    trialEndsAt: data.trial_ends_at,
-    currentPeriodEnd: data.current_period_end,
-    gracePeriodEndsAt: data.grace_period_ends_at,
-    planType: data.plan_type,
-    cancelAtPeriodEnd: data.cancel_at_period_end,
-    stripeCustomerId: data.stripe_customer_id,
-    stripeSubscriptionId: data.stripe_subscription_id,
-  }
-}
-
 // Returns true if the user has full read and write access
 export function hasFullAccess(sub: SubscriptionData | null): boolean {
   if (!sub) return false
@@ -57,13 +29,11 @@ export function hasFullAccess(sub: SubscriptionData | null): boolean {
     case 'active':
       return true
     case 'past_due':
-      // 7-day grace period after payment failure
       return (
         sub.gracePeriodEndsAt != null &&
         new Date(sub.gracePeriodEndsAt) > now
       )
     case 'canceled':
-      // Access through end of paid period
       return (
         sub.currentPeriodEnd != null &&
         new Date(sub.currentPeriodEnd) > now
